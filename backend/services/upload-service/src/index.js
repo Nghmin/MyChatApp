@@ -18,8 +18,6 @@ cloudinary.config({
 });
 
 const storage = new CloudinaryStorage({
-  // ĐÂY LÀ CHỖ QUAN TRỌNG NHẤT:
-  // Thư viện của ông cần một object chứa v2, chứ không phải bản thân v2
   cloudinary: {
     v2: cloudinary
   },

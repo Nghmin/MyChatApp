@@ -2,12 +2,19 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import { services } from '../config/services.js';
 import { proxyRequestLogger } from './logger.js';
 
+const handleProxyReq = (proxyReq, req, res) => {
+    // Check xác thực
+    if (req.user && req.user.userId) {
+        proxyReq.setHeader('x-user-id', req.user.userId);
+    }
+    proxyRequestLogger(proxyReq, req, res);
+};
 // Cấu hình Proxy cho Auth
 export const authProxy = createProxyMiddleware({
     target: services.authService,
     changeOrigin: true,
     pathRewrite: { '^/auth': '' },
-    onProxyReq: proxyRequestLogger,
+    onProxyReq: handleProxyReq,
 });
 
 // Cấu hình Proxy cho Chat & Socket
@@ -16,7 +23,7 @@ export const chatProxy = createProxyMiddleware({
     changeOrigin: true,
     pathRewrite: { '^/api': '' },
     ws: true,
-    onProxyReq: proxyRequestLogger,
+    onProxyReq: handleProxyReq,
 });
 
 // Cấu hình Proxy cho Upload
@@ -25,11 +32,10 @@ export const uploadProxy = createProxyMiddleware({
     changeOrigin: true,
     pathRewrite: { '^/api/upload': '' },
     onProxyReq: (proxyReq, req, res) => {
-        if (req.headers['content-type']) {
+        handleProxyReq(proxyReq, req, res);
+        if (req.headers['content-type'] && !req.headers['content-type'].includes('multipart/form-data')) {
             proxyReq.setHeader('content-type', req.headers['content-type']);
         }
-    },
-    onProxyRes: (proxyRes, req, res) => {
     },
     proxyTimeout: 60000, 
     timeout: 60000,

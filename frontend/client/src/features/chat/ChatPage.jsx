@@ -23,8 +23,20 @@ const ChatPage = () => {
     
     const fetchFriends = async () => {
       try {
+        const token = localStorage.getItem('token');
+        console.log("Fetching friends with token:", token);
         const myId = currentUser.userId || currentUser._id;
-        const response = await fetch(`http://localhost:5000/api/users?currentUserId=${myId}`);
+        const response = await fetch(`http://localhost:5000/api/users?currentUserId=${myId}`,{
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          }
+        });
+        if (!response.ok) {
+        console.error("Lỗi xác thực hoặc Gateway chặn");
+        return;
+      }
         const data = await response.json();
         setFriends(data);
       } catch (err) {

@@ -19,6 +19,7 @@ const Login = () => {
             const data = await response.json();
 
             if (response.ok) {
+                localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data));
                 alert("Chào mừng " + data.username + " quay trở lại!");
                 navigate('/chat'); 

@@ -53,6 +53,7 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
     setLoading(true);
 
     try {
+      const token = localStorage.getItem('token');
       let finalAvatarUrl = myInfo?.avatar || '';
       let finalPublicId = currentPublicId || '';
 
@@ -61,8 +62,12 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
         formData.append('file', image);
         if (currentPublicId) formData.append('oldPublicId', currentPublicId);
 
-        const uploadRes = await axios.post('http://localhost:5000/api/upload/upload', formData);
-        
+        const uploadRes = await axios.post('http://localhost:5000/api/upload/upload', formData,{
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data' 
+          }
+        });
         if (uploadRes.data && uploadRes.data.url) {
           finalAvatarUrl = uploadRes.data.url;
           finalPublicId = uploadRes.data.publicId;
@@ -79,8 +84,9 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
         avatarPublicId: finalPublicId
       };
 
-      const updateRes = await axios.put('http://localhost:5000/auth/update-profile', payload);
-
+      const updateRes = await axios.put('http://localhost:5000/auth/update-profile', payload, {
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
       if (updateRes.status === 200) {
         onUpdateSuccess(updateRes.data);
         alert("Cập nhật thành công!");

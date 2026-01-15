@@ -19,13 +19,17 @@ const ChatUploadTool = ({ onUploadSuccess }) => {
     formData.append('file', file);
 
     try {
+      const token = localStorage.getItem('token');
       const response = await axios.post('http://localhost:5000/api/upload/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 
+          'Content-Type': 'multipart/form-data' ,
+          'Authorization': `Bearer ${token}` 
+        },
+        
       });
 
       if (response.data && response.data.url) {
         console.log("Upload thành công:", response.data.url);
-        // Trả link và loại file về ChatWindow
         onUploadSuccess(response.data.url, type);
       }
     } catch (error) {

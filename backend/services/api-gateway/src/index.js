@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { verifyToken } from './middleware/auth.js';
 import { createServer } from 'http';
 import { authProxy, chatProxy , uploadProxy} from './middleware/proxy.js';
 import { requestLogger } from './middleware/logger.js';
@@ -12,9 +13,10 @@ app.use(cors());
 app.use(requestLogger);
 
 // Điều hướng Routes
-app.use('/api/upload', uploadProxy); 
-app.use('/api', chatProxy);
+app.use('/api/upload',verifyToken, uploadProxy); 
+app.use('/api',verifyToken, chatProxy);
 app.use('/auth', authProxy);
+app.use('/auth/update-profile', verifyToken, authProxy);
 app.use('/socket.io', chatProxy);
 
 

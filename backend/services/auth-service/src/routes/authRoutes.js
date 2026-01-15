@@ -1,9 +1,10 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
-
+import jwt from 'jsonwebtoken';
 import { validateRegister  , validateLogin} from '../middleware/authMiddleware.js';
-
+import dotenv from 'dotenv';
+dotenv.config();
 const router = express.Router();
 
 // API Đăng ký: POST /register
@@ -47,7 +48,15 @@ router.post('/login',validateLogin, async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Sai mật khẩu!" });
 
+        const token = jwt.sign(
+            { userId: user._id }, 
+            process.env.JWT_SECRET, 
+            { expiresIn: '1d' }
+        );
+        console.log(token);
+
         res.status(200).json({ 
+            token,
             userId: user._id, 
             username: user.username,
             avatar: user.avatar || '',
@@ -59,17 +68,18 @@ router.post('/login',validateLogin, async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: "Lỗi Server khi đăng nhập" });
+        console.log(error);
     }
 });
 
 // API upload: put /update
 router.put('/update-profile', async (req, res) => {
     console.log("Body nhận được:", req.body);
-
     try {
+        const userIdFromToken = req.headers['x-user-id'];
         const { userId, username, avatar, avatarPublicId , gender , birthday } = req.body;
-
-        if (!userId) {
+        const targetId = userIdFromToken || req.body.userId;
+        if (!targetId) {
             return res.status(400).json({ message: "Thiếu ID người dùng" });
         }
 
@@ -77,7 +87,7 @@ router.put('/update-profile', async (req, res) => {
         
         // 
         const updatedUser = await User.findByIdAndUpdate(
-            userId, 
+            targetId, 
             { 
                 username, 
                 avatar, 

@@ -44,7 +44,14 @@ const ChatWindow = ({ selectedUser, myInfo, onShowFriendProfile }) => {
     if (!selectedUser?._id || !myId) return;
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/messages/${myId}/${selectedUser._id}`);
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:5000/api/messages/${myId}/${selectedUser._id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           setMessages(Array.isArray(data) ? data : []);
@@ -62,7 +69,6 @@ const ChatWindow = ({ selectedUser, myInfo, onShowFriendProfile }) => {
   const handleSendMedia = async (url, type) => {
     if (!selectedUser || !url) return;
 
-    // Hiển thị tin nhắn giả lập ngay lập tức
     const optimisticId = Date.now().toString();
     const optimisticMessage = {
       _id: optimisticId,
@@ -77,9 +83,13 @@ const ChatWindow = ({ selectedUser, myInfo, onShowFriendProfile }) => {
     setMessages((prev) => [...prev, optimisticMessage]);
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:5000/api/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json' ,
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           sender: myId,
           receiver: selectedUser._id,
@@ -117,10 +127,14 @@ const ChatWindow = ({ selectedUser, myInfo, onShowFriendProfile }) => {
     setMessages((prev) => [...prev, optimisticMessage]);
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:5000/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender: myId, receiver: selectedUser._id, text: msgText }),
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ sender: myId, receiver: selectedUser._id, text: msgText }),
       });
 
       if (response.ok) {
