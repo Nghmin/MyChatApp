@@ -10,6 +10,7 @@ const User = new mongoose.Schema({
   birthday: String,
   phone: String,
   avatarPublicId: { type: String, default: '' },
+  lastMessageAt: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
 });
 

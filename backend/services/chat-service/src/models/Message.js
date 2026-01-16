@@ -6,6 +6,7 @@ const Message = new mongoose.Schema({
   text: String,
   fileUrl: String,
   messageType: { type: String, default: 'text' },
+  isRead: { type: Boolean, default: false },
 }, { timestamps: true });
 
 export default mongoose.model('Message', Message);

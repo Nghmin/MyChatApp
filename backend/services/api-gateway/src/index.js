@@ -8,11 +8,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 const app = express();
 
-// Áp dụng Middleware toàn cục
+// Middleware
 app.use(cors());
 app.use(requestLogger);
 
-// Điều hướng Routes
+// Routes with Proxy
 app.use('/api/upload',verifyToken, uploadProxy); 
 app.use('/api',verifyToken, chatProxy);
 app.use('/auth', authProxy);
@@ -22,7 +22,7 @@ app.use('/socket.io', chatProxy);
 
 const server = createServer(app);
 
-// Xử lý Socket Upgrade
+// WebSocket upgrade handling
 server.on('upgrade', (req, socket, head) => {
     if (req.url.startsWith('/socket.io')) {
         chatProxy.upgrade(req, socket, head);
