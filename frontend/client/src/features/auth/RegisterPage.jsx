@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const Register = () => {
   const navigate = useNavigate();
-  // 1. Thêm phone và confirmPassword vào state
+  // Thêm phone và confirmPassword vào state
   const [formData, setFormData] = useState({ 
     username: '', 
     email: '', 
@@ -12,7 +12,7 @@ const Register = () => {
     confirmPassword: '' 
   });
 
-  // 2. State để ẩn/hiện mật khẩu
+  // State để ẩn/hiện mật khẩu
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -21,7 +21,7 @@ const Register = () => {
     console.log("Đã nhấn nút đăng ký!", formData);
 
     try {
-      const response = await fetch('http://localhost:5000/auth/register', {
+      const response = await fetch('http://127.0.0.1:5000/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

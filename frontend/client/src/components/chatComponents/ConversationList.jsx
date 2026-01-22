@@ -1,8 +1,9 @@
-import React from 'react';
+import React ,{useState} from 'react';
+import AddFriendModal from './AddFriendModal';
 import { Search, UserPlus } from 'lucide-react';
 
-const ConversationList = ({ friends, onSelectUser, selectedId , onlineUsers = [] }) => {
-  
+const ConversationList = ({ friends, onSelectUser, selectedId , onlineUsers = [],onSendFriendRequest }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   return (
     <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
       {/* Header Tìm kiếm & Tab (Giữ nguyên) */}
@@ -17,7 +18,7 @@ const ConversationList = ({ friends, onSelectUser, selectedId , onlineUsers = []
               placeholder="Tìm kiếm"
             />
           </div>
-          <button className="p-1.5 hover:bg-gray-100 rounded-md transition-colors" title="Thêm bạn">
+          <button onClick={() => setIsModalOpen(true)} className="p-1.5 hover:bg-gray-100 rounded-md transition-colors" title="Thêm bạn">
             <UserPlus size={20} className="text-gray-700" />
           </button>
         </div>
@@ -34,18 +35,26 @@ const ConversationList = ({ friends, onSelectUser, selectedId , onlineUsers = []
           friends.map((user) => {
             const isSelected = selectedId === user._id;
             
-            // LOGIC ONLINE MỚI
             const isOnline = onlineUsers.includes(user._id);
-
+            const isCloud = user.username === "Cloud của tôi";
             const lastMsg = user.lastMessage;
             const unreadCount = user.unreadCount || 0;
             const isUnread = unreadCount > 0;
-
+            let isMy = "Bạn: ";
             const renderLastMessageText = () => {
+              
               if (!lastMsg) return "Nhấn để bắt đầu trò chuyện";
+              if (lastMsg.isDeleted === true) return "Tin nhắn đã được thu hồi";
               if (lastMsg.messageType === 'image') return "[Hình ảnh]";
               if (lastMsg.messageType === 'video') return "[Video]";
-              return lastMsg.text;
+              if (isCloud) {
+                if(!lastMsg) return isMy + lastMsg.text;
+                else return "Lưu trữ tin nhắn và tài liệu";
+              }
+              if (lastMsg.sender === user._id) {
+                isMy = "";
+              } 
+              return isMy + lastMsg.text;
             };
 
             const formatTime = (dateString) => {
@@ -75,7 +84,7 @@ const ConversationList = ({ friends, onSelectUser, selectedId , onlineUsers = []
                   </div>
                   
                   {/* Trạng thái Online (Cập nhật logic hiển thị) */}
-                  {isOnline && (
+                  {isOnline && !isCloud && (
                     <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
                   )}
                 </div>
@@ -119,6 +128,11 @@ const ConversationList = ({ friends, onSelectUser, selectedId , onlineUsers = []
           </div>
         )}
       </div>
+      <AddFriendModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        onSendRequest={onSendFriendRequest}
+      />
     </div>
   );
 };

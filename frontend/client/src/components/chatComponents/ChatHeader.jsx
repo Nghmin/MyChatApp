@@ -4,10 +4,11 @@ import { TimeLastSeen } from '../../utils/TimeLastSeen';
 const ChatHeader = ({ selectedUser, onShowFriendProfile,onlineUsers = [] ,onToggleSidebar}) => {
   if (!selectedUser) return null;
   const isOnline = onlineUsers.includes(selectedUser._id);
+  const isCloud = selectedUser.username === "Cloud của tôi";
   return (
     <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 z-10 shadow-sm">
       <div 
-        onClick={onShowFriendProfile} 
+        onClick={() => onShowFriendProfile(selectedUser)} 
         className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-colors"
       >
         <div className="relative">
@@ -17,10 +18,10 @@ const ChatHeader = ({ selectedUser, onShowFriendProfile,onlineUsers = [] ,onTogg
             alt="avatar" 
           />
           {/* Chấm xanh thông báo online ngay trên avatar cho đồng bộ */}
-          {isOnline && (
+          {isOnline && !isCloud &&(
             <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
           )}
-        </div>
+      </div>
 
         <div className="ml-3">
           <h3 className="font-bold text-[15px] text-gray-800">{selectedUser.username}</h3>
@@ -33,7 +34,7 @@ const ChatHeader = ({ selectedUser, onShowFriendProfile,onlineUsers = [] ,onTogg
               </p>
             ) : (
               <p className="text-[12px] text-gray-400 italic">
-                {TimeLastSeen(selectedUser.lastMessageAt)}
+                {!isCloud && TimeLastSeen(selectedUser.lastMessageAt)}
               </p>
             )}
           </div>

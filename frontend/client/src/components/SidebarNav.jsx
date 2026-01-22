@@ -1,14 +1,19 @@
 import React from 'react';
-import { MessageSquare, Users, Bell, Star, Settings, Cloud } from 'lucide-react';
+import { MessageSquare, Users, Settings, Cloud } from 'lucide-react';
 
-const Sidebar = ({ avatar, onAvatarClick, activeTab = 'chat' }) => {
+const Sidebar = ({ avatar, onAvatarClick, requestCount, activeTab = 'chat', onTabChange }) => {
   const avatarUrl = avatar || "https://res.cloudinary.com/demo/image/upload/d_avatar.png/non_existent.jpg";
 
+  const menuItems = [
+    { id: 'chat', icon: MessageSquare, label: 'Tin nhắn' },
+    { id: 'contact', icon: Users, label: 'Danh bạ' },
+  ];
+
   return (
-    <div className="w-16 bg-[#0091ff] flex flex-col items-center py-4 text-white shadow-inner">
+    <div className="w-16 bg-[#0091ff] flex flex-col items-center py-4 text-white shadow-inner shrink-0 h-full">
       {/* Avatar User */}
       <div 
-        className="w-12 h-12 bg-gray-200 rounded-full mb-8 cursor-pointer overflow-hidden border-2 border-white/30 hover:border-white transition-all active:scale-95"
+        className="w-12 h-12 bg-gray-200 rounded-full mb-6 cursor-pointer overflow-hidden border-2 border-white/30 hover:border-white transition-all active:scale-95 shadow-md"
         onClick={onAvatarClick}
       >
         <img 
@@ -19,38 +24,52 @@ const Sidebar = ({ avatar, onAvatarClick, activeTab = 'chat' }) => {
         />
       </div>
 
-      {/* Menu Icons */}
-      <div className="flex flex-col space-y-2 w-full">
-        {/* Chat Icon - Active State */}
-        <div className={`p-3 cursor-pointer flex justify-center transition-colors ${activeTab === 'chat' ? 'bg-[#0068ff]' : 'hover:bg-white/10'}`}>
-          <MessageSquare size={26} strokeWidth={activeTab === 'chat' ? 2.5 : 1.5} />
-        </div>
-
-        {/* Danh bạ */}
-        <div className={`p-3 cursor-pointer flex justify-center transition-colors ${activeTab === 'contact' ? 'bg-[#0068ff]' : 'hover:bg-white/10'}`}>
-          <Users size={26} strokeWidth={activeTab === 'contact' ? 2.5 : 1.5} />
-        </div>
-
-        {/* Thông báo */}
-        <div className="p-3 cursor-pointer flex justify-center hover:bg-white/10 transition-colors">
-          <Bell size={26} strokeWidth={1.5} />
-        </div>
-        
-        {/* Tin nhắn đánh dấu */}
-        <div className="p-3 cursor-pointer flex justify-center hover:bg-white/10 transition-colors">
-          <Star size={26} strokeWidth={1.5} />
-        </div>
+      {/* Menu Icons (Tin nhắn & Danh bạ) */}
+      <div className="flex flex-col w-full">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          
+          return (
+            <div 
+              key={item.id}
+              onClick={() => onTabChange && onTabChange(item.id)}
+              className={`group relative p-4 cursor-pointer flex justify-center transition-all duration-200 
+                ${isActive ? 'bg-[#0068ff]' : 'hover:bg-black/10'}`}
+              title={item.label}
+            >
+              <div className="relative">
+                <Icon 
+                  size={26} 
+                  strokeWidth={isActive ? 2.5 : 1.5} 
+                  className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
+                />
+                
+                {/* CHẤM ĐỎ THÔNG BÁO LỜI MỜI KẾT BẠN */}
+                {item.id === 'contact' && requestCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-[#0091ff] px-1 animate-in zoom-in-50">
+                    {requestCount > 99 ? '99+' : requestCount}
+                  </span>
+                )}
+              </div>
+              
+              {/* Vạch trắng Active bên trái */}
+              {isActive && (
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_8px_white]" />
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Bottom Icons */}
-      <div className="mt-auto flex flex-col items-center space-y-4">
-        {/* Lưu trữ Cloud (Zalo thường có cái này) */}
-        <div className="p-3 cursor-pointer flex justify-center hover:bg-white/10 transition-colors w-full">
+      {/* Bottom Icons... (giữ nguyên) */}
+      <div className="mt-auto flex flex-col items-center w-full">
+        {/* Cloud & Settings */}
+        <div className="p-4 cursor-pointer flex justify-center hover:bg-black/10 transition-colors w-full" title="Cloud của tôi">
           <Cloud size={24} strokeWidth={1.5} />
         </div>
-
-        <div className="p-3 cursor-pointer flex justify-center hover:bg-white/10 transition-colors w-full">
-          <Settings size={26} strokeWidth={1.5} />
+        <div className="p-4 cursor-pointer flex justify-center hover:bg-black/10 transition-colors w-full" title="Cài đặt">
+          <Settings size={24} strokeWidth={1.5} />
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ import {formatToVNPhone} from '../../utils/phoneFormatUser';
 
 const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) => {
   const isMe = !targetUser || myInfo?._id === targetUser?._id;
+  const isCloud = targetUser?.username === "Cloud của tôi";
   const userDisplay = isMe ? myInfo : targetUser;
 
   const [username, setUsername] = useState('');
@@ -62,7 +63,7 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
         formData.append('file', image);
         if (currentPublicId) formData.append('oldPublicId', currentPublicId);
 
-        const uploadRes = await axios.post('http://localhost:5000/api/upload/upload', formData,{
+        const uploadRes = await axios.post('http://127.0.0.1:5000/upload/upload', formData,{
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data' 
@@ -84,7 +85,7 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
         avatarPublicId: finalPublicId
       };
 
-      const updateRes = await axios.put('http://localhost:5000/auth/update-profile', payload, {
+      const updateRes = await axios.put('http://127.0.0.1:5000/auth/update-profile', payload, {
         headers: { 'Authorization': `Bearer ${token}` } 
       });
       if (updateRes.status === 200) {
@@ -143,7 +144,8 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
               )}
             </div>
           </div>
-
+              
+          {!isCloud && (<>
           {/* Thông tin chi tiết */}
           <div className="mt-6 space-y-4">
             <h4 className="text-[14px] font-bold border-b pb-2">Thông tin cá nhân</h4>
@@ -198,6 +200,7 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
                 )}
             </div>
           </div>
+          </>)}
 
           {/* Nút hành động */}
           {isMe ? (

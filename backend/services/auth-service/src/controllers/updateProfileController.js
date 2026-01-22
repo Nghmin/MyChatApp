@@ -11,7 +11,23 @@ export const putUpdateProfile = async (req, res) => {
         }
 
         console.log("=> Đang cập nhật DB cho ID:", userId);
-        
+        if (avatarPublicId) {
+            const currentUser = await User.findById(targetId);
+            
+            if (currentUser && currentUser.avatarPublicId) {
+                const oldId = currentUser.avatarPublicId;
+                const defaultId = process.env.AVATAR_DEFAULT_PUBLIC_ID;
+
+                if (oldId !== defaultId && oldId !== avatarPublicId) {
+                    try {
+                        await cloudinary.uploader.destroy(oldId);
+                        console.log("=> Đã xóa ảnh cũ trên Cloudinary:", oldId);
+                    } catch (err) {
+                        console.error("Lỗi khi xóa ảnh trên Cloud:", err);
+                    }
+                }
+            }
+        }
         const updatedUser = await User.findByIdAndUpdate(
             targetId, 
             { 

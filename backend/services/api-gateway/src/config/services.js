@@ -5,4 +5,5 @@ export const services = {
     authService: process.env.AUTH_SERVICE_URL ,
     chatService: process.env.CHAT_SERVICE_URL ,
     uploadService: process.env.UPLOAD_SERVICE_URL ,
+    friendService: process.env.FRIEND_SERVICE_URL ,
 };

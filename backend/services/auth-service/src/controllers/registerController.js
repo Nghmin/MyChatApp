@@ -15,7 +15,9 @@ export const postRegister = async (req, res) => {
             username, 
             email, 
             phone, 
-            password: hashedPassword 
+            password: hashedPassword ,
+            avatar: process.env.AVATAR_DEFAULT_URL,
+            avatarPublicId: process.env.AVATAR_DEFAULT_PUBLIC_ID
         });
         await newUser.save();
 

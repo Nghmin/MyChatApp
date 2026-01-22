@@ -4,14 +4,14 @@ import {postRegister} from '../controllers/registerController.js';
 import {postLogin} from '../controllers/LoginController.js';
 import {putUpdateProfile} from '../controllers/updateProfileController.js';
 
-const router = express.Router();
+const authRouter = express.Router();
 
 // API Đăng ký: POST /register
-router.post('/register',validateRegister, postRegister);
+authRouter.post('/register',validateRegister, postRegister);
 
 // API Đăng nhập: POST /login
-router.post('/login',validateLogin, postLogin);
+authRouter.post('/login',validateLogin, postLogin);
 
 // API upload: put /update
-router.put('/update-profile',putUpdateProfile);
-export default router;
+authRouter.put('/update-profile',putUpdateProfile);
+export default authRouter;

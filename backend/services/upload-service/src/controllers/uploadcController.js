@@ -1,4 +1,3 @@
-import { upload } from '../config/cloudinary.js';
 export const postUpload = async (req, res) => {
     console.log("--> Controller: Xử lý kết quả sau khi upload...");
     if (!req.file) {
