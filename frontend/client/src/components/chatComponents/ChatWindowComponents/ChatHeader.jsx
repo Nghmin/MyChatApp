@@ -1,14 +1,14 @@
 import React from 'react';
 import { Search, Phone, Video, PanelRight } from 'lucide-react';
-import { TimeLastSeen } from '../../utils/TimeLastSeen';
-const ChatHeader = ({ selectedUser, onShowFriendProfile,onlineUsers = [] ,onToggleSidebar}) => {
+import { TimeLastSeen } from '../../../utils/TimeLastSeen';
+const ChatHeader = ({ selectedUser, onShowSelectProfile,onlineUsers = [] ,onToggleSidebar}) => {
   if (!selectedUser) return null;
   const isOnline = onlineUsers.includes(selectedUser._id);
   const isCloud = selectedUser.username === "Cloud của tôi";
   return (
     <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 z-10 shadow-sm">
       <div 
-        onClick={() => onShowFriendProfile(selectedUser)} 
+        onClick={() => onShowSelectProfile(selectedUser)} 
         className="flex items-center cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-colors"
       >
         <div className="relative">

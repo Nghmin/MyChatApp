@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, UserMinus, Send } from 'lucide-react';
 
-const SentFriendRequestList = ({ onShowFriendProfile , socket, myInfo}) => {
+const SentFriendRequestList = ({ onShowSelectProfile , socket, myInfo}) => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,7 +15,7 @@ const SentFriendRequestList = ({ onShowFriendProfile , socket, myInfo}) => {
       const myId = user.userId || user._id;
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://127.0.0.1:5000/friend/sent/${myId}`, {
+      const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/sent/${myId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -31,7 +31,7 @@ const SentFriendRequestList = ({ onShowFriendProfile , socket, myInfo}) => {
     if (!window.confirm("Bạn muốn thu hồi lời mời này?")) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://127.0.0.1:5000/friend/decline`, {
+      const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/friend/decline`, {
         method: 'DELETE', 
         headers: { 
           'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ const SentFriendRequestList = ({ onShowFriendProfile , socket, myInfo}) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {requests.map((req) => (
             <div key={req._id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-3 cursor-pointer" onClick={() => onShowFriendProfile(req.receiver)}>
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => onShowSelectProfile(req.receiver)}>
                 <img 
                   src={req.receiver?.avatar || "https://www.w3schools.com/howto/img_avatar.png"} 
                   className="w-12 h-12 rounded-full object-cover" 

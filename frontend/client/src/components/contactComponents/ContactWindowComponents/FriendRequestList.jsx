@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MailOpen, Check, X, Loader2 } from 'lucide-react';
-
-const FriendRequestList = ({ socket, myInfo, onShowFriendProfile }) => {
+import { showFirendRequestNotification } from '../../../utils/toastHelpers';
+const FriendRequestList = ({ socket, myInfo, onShowSelectProfile, refreshData }) => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewedIds, setViewedIds] = useState([]);
@@ -17,7 +17,7 @@ const FriendRequestList = ({ socket, myInfo, onShowFriendProfile }) => {
       const token = localStorage.getItem('token');
       
       // Gọi sang Friend Service (Cổng 5002)
-      const response = await fetch(`http://127.0.0.1:5000/friend/received/${myId}`, {
+      const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/received/${myId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -33,7 +33,7 @@ const FriendRequestList = ({ socket, myInfo, onShowFriendProfile }) => {
         if (!viewedIds.includes(sender._id)) {
             setViewedIds(prev => [...prev, sender._id]);
         }
-        onShowFriendProfile(sender);
+        onShowSelectProfile(sender);
     };
 
   const handleAction = async (requestId, senderId, action) => {
@@ -41,7 +41,7 @@ const FriendRequestList = ({ socket, myInfo, onShowFriendProfile }) => {
         const token = localStorage.getItem('token');
         const endpoint = action === 'accept' ? 'accept' : 'decline';
         const method = action === 'accept' ? 'PUT' : 'DELETE';
-        const response = await fetch(`http://127.0.0.1:5000/friend/${endpoint}`, {
+        const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/${endpoint}`, {
             method: method,
             headers: { 
                 'Content-Type': 'application/json',
@@ -51,21 +51,31 @@ const FriendRequestList = ({ socket, myInfo, onShowFriendProfile }) => {
         });
 
         if (response.ok) {
-            // Nếu là đồng ý, mới bắn socket báo cho người kia vui
-            if (action === 'accept' && socket) {
-                socket.emit('accept_friend_request', {
-                    senderId: senderId, // ID của người gửi lời mời
-                    receiverName: myInfo?.username || "Một người bạn" 
+            const data = await response.json();
+            if (socket) {
+                const event = action === 'accept' ? 'accept_friend_request' : 'decline_friend_request';
+                socket.emit(event, {
+                    senderId: senderId, 
+                    receiverId: myInfo?.userId || myInfo?._id,
+                    receiverName: myInfo?.username || "Một người bạn",
+                    senderName: action === 'accept' ? data.friendData?.username : undefined,
+                    friendData: action === 'accept' ? data.friendData : undefined  // Truyền dữ liệu bạn vừa chấp nhận
                 });
-                console.log("Đã chấp nhận lời mời kết bạn" + requestId);
             }
-            if (action === 'decline' && socket) {
+            if (action === 'accept') {
+                showFirendRequestNotification.success("Đã chấp nhận lời mời kết bạn!");
+                console.log("Đã chấp nhận lời mời kết bạn" + requestId) ;
+            }
+            
+            if (action === 'decline') {
                 socket.emit('decline_friend_request', {
-                    senderId: senderId, // ID của người gửi lời mời
+                    senderId: senderId, 
                 });
                 console.log("Đã từ chối lời mời kết bạn" + requestId) ;
             }
-            // Cập nhật UI ngay lập tức: Xóa lời mời vừa xử lý khỏi danh sách
+            if (refreshData) {
+              refreshData(); 
+            }
             setRequests(prev => prev.filter(r => r._id !== requestId));
         }
     } catch (err) { 
@@ -90,8 +100,8 @@ const FriendRequestList = ({ socket, myInfo, onShowFriendProfile }) => {
                 key={req._id} 
                 className={`p-4 rounded-xl shadow-sm border flex items-center justify-between transition-all 
                     ${!viewedIds.includes(req.sender?._id) 
-                    ? 'bg-blue-50/50 border-blue-200 shadow-md ring-1 ring-blue-100' // Trạng thái "Nổi bật"
-                    : 'bg-white border-gray-100' // Trạng thái thường
+                    ? 'bg-blue-50/50 border-blue-200 shadow-md ring-1 ring-blue-100' 
+                    : 'bg-white border-gray-100' 
                     }`}
                 
                 >

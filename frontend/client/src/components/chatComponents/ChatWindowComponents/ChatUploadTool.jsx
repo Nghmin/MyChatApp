@@ -30,7 +30,7 @@ const ChatUploadTool = ({ onUploadSuccess }) => {
 
       if (response.data && response.data.url) {
         console.log("Upload thành công:", response.data.url);
-        onUploadSuccess(response.data.url, type);
+        onUploadSuccess(response.data.url, type , response.data.publicId);
       }
     } catch (error) {
       console.error("Lỗi upload file:", error);

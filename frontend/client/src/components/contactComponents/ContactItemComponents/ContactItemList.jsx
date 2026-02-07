@@ -1,12 +1,12 @@
 import React from 'react';
 import { User, Users, UserPlus, Group, Search, Send } from 'lucide-react';
 
-const ContactItemList = ({ onSelectCategory, activeCategory, requestCount }) => {
+const ContactItemList = ({ onSelectCategory, activeCategory, friendRequestCount, groupRequestCount}) => {
   const menuItems = [
     { id: 'friend-list', icon: <User size={20} />, label: 'Danh sách bạn bè', color: 'text-blue-500' },
     { id: 'group-list', icon: <Users size={20} />, label: 'Danh sách nhóm', color: 'text-orange-500' },
-    { id: 'friend-requests', icon: <UserPlus size={20} />, label: 'Lời mời kết bạn', color: 'text-blue-600', count: requestCount},
-    { id: 'group-requests', icon: <Group size={20} />, label: 'Lời mời vào nhóm', color: 'text-green-600', count: 0 },
+    { id: 'friend-requests', icon: <UserPlus size={20} />, label: 'Lời mời kết bạn', color: 'text-blue-600', count: friendRequestCount},
+    { id: 'group-requests', icon: <Group size={20} />, label: 'Lời mời vào nhóm', color: 'text-green-600', count: groupRequestCount },
     { id: 'sent-requests',  icon: <Send size={20} /> , label: 'Lời mời đã gửi', color: 'text-gray-600', count: 0 },
   ];
 

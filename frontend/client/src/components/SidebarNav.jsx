@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MessageSquare, Users, Settings, Cloud } from 'lucide-react';
 
-const Sidebar = ({ avatar, onAvatarClick, requestCount, activeTab = 'chat', onTabChange }) => {
+const Sidebar = ({ avatar, onAvatarClick, requestCounts, activeTab = 'chat', onTabChange, friends = [] }) => {
   const avatarUrl = avatar || "https://res.cloudinary.com/demo/image/upload/d_avatar.png/non_existent.jpg";
+  const totalUnreadMessages = useMemo(() => {
+    return friends.reduce((sum, friend) => sum + (friend.unreadCount || 0), 0);
+  }, [friends]);
 
   const menuItems = [
-    { id: 'chat', icon: MessageSquare, label: 'Tin nhắn' },
-    { id: 'contact', icon: Users, label: 'Danh bạ' },
+    { id: 'chat', icon: MessageSquare, label: 'Tin nhắn', count: totalUnreadMessages },
+    { id: 'contact', icon: Users, label: 'Danh bạ', count: requestCounts },
   ];
 
   return (
@@ -24,7 +27,7 @@ const Sidebar = ({ avatar, onAvatarClick, requestCount, activeTab = 'chat', onTa
         />
       </div>
 
-      {/* Menu Icons (Tin nhắn & Danh bạ) */}
+      {/* Menu Icons */}
       <div className="flex flex-col w-full">
         {menuItems.map((item) => {
           const Icon = item.icon;
@@ -45,15 +48,13 @@ const Sidebar = ({ avatar, onAvatarClick, requestCount, activeTab = 'chat', onTa
                   className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
                 />
                 
-                {/* CHẤM ĐỎ THÔNG BÁO LỜI MỜI KẾT BẠN */}
-                {item.id === 'contact' && requestCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-[#0091ff] px-1 animate-in zoom-in-50">
-                    {requestCount > 99 ? '99+' : requestCount}
+                {item.count > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-[#0091ff] px-1 animate-bounce-slow">
+                    {item.count > 99 ? '99+' : item.count}
                   </span>
                 )}
               </div>
               
-              {/* Vạch trắng Active bên trái */}
               {isActive && (
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_8px_white]" />
               )}
@@ -62,9 +63,7 @@ const Sidebar = ({ avatar, onAvatarClick, requestCount, activeTab = 'chat', onTa
         })}
       </div>
 
-      {/* Bottom Icons... (giữ nguyên) */}
       <div className="mt-auto flex flex-col items-center w-full">
-        {/* Cloud & Settings */}
         <div className="p-4 cursor-pointer flex justify-center hover:bg-black/10 transition-colors w-full" title="Cloud của tôi">
           <Cloud size={24} strokeWidth={1.5} />
         </div>

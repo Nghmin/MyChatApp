@@ -10,6 +10,17 @@ const UserSchema = new mongoose.Schema({
   birthday: String,
   avatarPublicId: { type: String, default: '' },
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  lastMessage: {
+    text: String,
+    sender: {
+      _id: mongoose.Schema.Types.ObjectId,
+      username: String,
+      avatar: String
+    },
+    createdAt: { type: Date },
+    messageType: { type: String, default: 'text' },
+    isDeleted: { type: Boolean, default: false }
+  },
   lastMessageAt: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
 });

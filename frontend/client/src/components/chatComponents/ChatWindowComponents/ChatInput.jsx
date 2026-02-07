@@ -25,10 +25,15 @@ const ChatInput = ({ text, setText, onSend, onSendMedia, placeholder }) => {
     onSend();
     setShowEmojiPicker(false);
   };
-
+  
   return (
     <div className="bg-white border-t border-gray-200 relative">
-      <ChatUploadTool onUploadSuccess={onSendMedia} />
+      <ChatUploadTool 
+        onUploadSuccess={(url, type, publicId) => {
+          console.log("Input nhận được publicId:", publicId); 
+          onSendMedia(url, type, publicId);
+        }} 
+      />
 
       {/* Bảng Emoji Picker */}
       {showEmojiPicker && (

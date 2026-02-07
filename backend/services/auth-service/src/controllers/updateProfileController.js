@@ -1,5 +1,5 @@
 import User from '../models/User.js';
-
+import cloudinary from '../config/cloudinary.js';
 export const putUpdateProfile = async (req, res) => {
     console.log("Body nhận được:", req.body);
     try {
