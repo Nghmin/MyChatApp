@@ -1,8 +1,11 @@
 import React, { useMemo } from 'react';
 import { X, Image as ImageIcon, Video, FileText, Link as LinkIcon, Download, ExternalLink, Users, Slash, UserPlus, LogOut , UserMinus} from 'lucide-react';
-
-const ChatSidebarRight = ({ selectedUser, messages = [], onClose, onMediaClick, onOpenGallery, onOpenCreateNewGroup, onOpenAddMembersToGroup }) => {
+import { showConfirmDialogToast } from '../../../utils/toastHelpers';
+const ChatSidebarRight = ({ selectedUser, currentUserId, messages = [], onClose, onMediaClick, onOpenGallery, onOpenCreateNewGroup, onOpenAddMembersToGroup , onUnfriend , onLeaveGroup }) => {
   const isGroup = selectedUser?.isGroup;
+  
+  // Check xem current user có phải admin của group không
+  const isAdmin = isGroup && selectedUser?.admin && (selectedUser.admin._id === currentUserId || selectedUser.admin === currentUserId);
 
   //Lọc Ảnh & Video 
   const sharedMedia = useMemo(() => 
@@ -23,7 +26,7 @@ const ChatSidebarRight = ({ selectedUser, messages = [], onClose, onMediaClick, 
     messages.forEach(msg => {
       if (msg.messageType === 'text' && msg.text) {
         const found = msg.text.match(urlRegex);
-        if (found) links.push(...found);
+        if (found) links.push(...found);  
       }
     });
     return [...new Set(links)]; 
@@ -58,17 +61,33 @@ const ChatSidebarRight = ({ selectedUser, messages = [], onClose, onMediaClick, 
           <div className="flex gap-4 mt-4 w-full px-4">
               {isGroup ? (
                 <>
-                  <button 
-                    onClick={() => onOpenAddMembersToGroup(selectedUser)}
-                    className="flex-1 flex flex-col items-center gap-1 p-2 hover:bg-gray-100 rounded-lg transition-colors group"
-                  >
-                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                      <UserPlus size={20} />
-                    </div>
-                    <span className="text-[11px] font-medium text-gray-600 text-center">Thêm thành viên</span>
-                  </button>
+                  {isAdmin ? (
+                    <button 
+                      onClick={() => onOpenAddMembersToGroup(selectedUser)}
+                      className="flex-1 flex flex-col items-center gap-1 p-2 hover:bg-blue-50 rounded-lg transition-colors group"
+                    >
+                      <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                        <UserPlus size={20} />
+                      </div>
+                      <span className="text-[11px] font-medium text-gray-600 text-center">Thêm thành viên</span>
+                    </button>
+                  ) : (
+                    <button 
+                      disabled
+                      className="flex-1 flex flex-col items-center gap-1 p-2 opacity-50 cursor-not-allowed rounded-lg"
+                      title="Chỉ admin mới có thể thêm thành viên"
+                    >
+                      <div className="w-10 h-10 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">
+                        <UserPlus size={20} />
+                      </div>
+                      <span className="text-[11px] font-medium text-gray-400 text-center">Thêm thành viên</span>
+                    </button>
+                  )}
 
-                  <button className="flex-1 flex flex-col items-center gap-1 p-2 hover:bg-red-50 rounded-lg transition-colors group">
+                  <button 
+                    onClick={() => onLeaveGroup(selectedUser)}
+                    className="flex-1 flex flex-col items-center gap-1 p-2 hover:bg-red-50 rounded-lg transition-colors group"
+                  >
                     <div className="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center group-hover:bg-red-100">
                       <LogOut size={18} />
                     </div>
@@ -87,7 +106,10 @@ const ChatSidebarRight = ({ selectedUser, messages = [], onClose, onMediaClick, 
                     <span className="text-[11px] font-medium text-gray-600 text-center">Tạo nhóm với {selectedUser.username?.split(' ').pop()}</span>
                   </button>
 
-                  <button className="flex-1 flex flex-col items-center gap-1 p-2 hover:bg-gray-100 rounded-lg transition-colors group text-gray-400">
+                  <button 
+                    onClick={() => {onUnfriend(selectedUser)}}
+                    className="flex-1 flex flex-col items-center gap-1 p-2 hover:bg-gray-100 rounded-lg transition-colors group text-gray-400"
+                  >
                     <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center">
                       <UserMinus size={18} color ="red" />
                     </div>
@@ -103,18 +125,28 @@ const ChatSidebarRight = ({ selectedUser, messages = [], onClose, onMediaClick, 
           <div>
             <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2 px-1">
               <Users size={16} className="text-purple-500" />
-              <span>Danh sách thành viên</span>
+              <span>Danh sách thành viên ({selectedUser.members?.length})</span>
             </h3>
             <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-              {selectedUser.members?.map((member, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-all">
-                  <img src={member.avatar || "/default-avatar.png"} className="w-8 h-8 rounded-full object-cover" alt="" />
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[12px] font-medium text-gray-700 truncate">{member.username}</span>
-                    {(member._id === selectedUser.admin?._id || member._id === selectedUser.admin) && <span className="text-[10px] text-blue-500">Trưởng nhóm</span>}
+              {selectedUser.members?.map((member, idx) => {
+                // Giới hạn hiển thị 4 thành viên
+                if (idx >= 4) return null;
+                return (
+                  <div key={idx} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-all cursor-pointer" onClick={() => {}}>
+                    <img src={member.avatar || "/default-avatar.png"} className="w-8 h-8 rounded-full object-cover" alt="" />
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-[12px] font-medium text-gray-700 truncate">{member.username}</span>
+                      {(member._id === selectedUser.admin?._id || member._id === selectedUser.admin) && <span className="text-[10px] text-blue-500">Trưởng nhóm</span>}
+                    </div>
                   </div>
+                );
+              })}
+              {/* Nếu > 4 thành viên */}
+              {selectedUser.members?.length > 4 && (
+                <div className="flex items-center justify-center p-2 text-[11px] text-gray-500 font-medium">
+                  +{selectedUser.members.length - 4} người nữa
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}
@@ -223,7 +255,12 @@ const ChatSidebarRight = ({ selectedUser, messages = [], onClose, onMediaClick, 
         </div>
 
         <div className="pt-4 pb-10">
-          <button className="w-full py-2.5 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-red-100">
+          {!isGroup &&
+            <button className="w-full py-2.5 text-xs font-semibold text-red-500 hover:bg-red-100 rounded-lg transition-colors border border-red-200">
+                Xóa lịch sử cuộc trò chuyện
+            </button>
+          }
+          <button className="w-full py-2.5 text-xs font-semibold text-red-500 hover:bg-red-100 rounded-lg transition-colors border border-red-200 mt-2">
               {isGroup ? "Rời khỏi nhóm" : "Chặn người dùng này"}
           </button>
         </div>

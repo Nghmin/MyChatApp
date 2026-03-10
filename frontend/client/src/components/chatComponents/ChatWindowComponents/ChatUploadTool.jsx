@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { ImageIcon, FileVideo, Paperclip, Loader2 } from 'lucide-react';
+import { showConfirmDialogToast } from '../../../utils/toastHelpers';
 
 const ChatUploadTool = ({ onUploadSuccess }) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -10,7 +11,7 @@ const ChatUploadTool = ({ onUploadSuccess }) => {
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      alert("Dung lượng file quá lớn (tối đa 10MB)");
+      showConfirmDialogToast.error("Dung lượng file quá lớn (tối đa 10MB)");
       return;
     }
 
@@ -34,7 +35,7 @@ const ChatUploadTool = ({ onUploadSuccess }) => {
       }
     } catch (error) {
       console.error("Lỗi upload file:", error);
-      alert("Không thể gửi file.");
+      showConfirmDialogToast.error("Không thể gửi file.");
     } finally {
       setIsUploading(false);
       e.target.value = '';

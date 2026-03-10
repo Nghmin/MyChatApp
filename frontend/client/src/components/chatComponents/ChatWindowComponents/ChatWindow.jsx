@@ -6,7 +6,7 @@ import ChatSidebarRight from './ChatSidebarRight';
 import MediaViewerLayer from '../ChatModals/MediaViewerLayer';
 import { showConfirmDialogToast } from '../../../utils/toastHelpers';
 
-const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onShowSelectProfile, socket, onlineUsers, onSendFriendRequest, onOpenCreateNewGroup, onOpenAddMembersToGroup }) => {
+const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onShowSelectProfile, socket, onlineUsers, onSendFriendRequest, onOpenCreateNewGroup, onOpenAddMembersToGroup , onUnfriend , onLeaveGroup}) => {
   const [text, setText] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true); 
@@ -315,12 +315,15 @@ const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onSh
       {/* Cột phải sidebar open */}
       {isSidebarOpen && (
         <ChatSidebarRight 
-          selectedUser={selectedUser} 
+          selectedUser={selectedUser}
+          currentUserId={myInfo?.userId || myInfo?._id}
           messages={messages}
           onClose={onToggleSidebar}
           onMediaClick={(previewMedia) => setPreviewMedia(previewMedia)}
           onOpenCreateNewGroup={onOpenCreateNewGroup}
           onOpenAddMembersToGroup={onOpenAddMembersToGroup}
+          onUnfriend={onUnfriend}
+          onLeaveGroup={onLeaveGroup}
         />
       )}
       

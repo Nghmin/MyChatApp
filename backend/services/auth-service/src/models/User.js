@@ -21,7 +21,7 @@ const UserSchema = new mongoose.Schema({
     messageType: { type: String, default: 'text' },
     isDeleted: { type: Boolean, default: false }
   },
-  lastMessageAt: { type: Date, default: Date.now },
+  lastSeen: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
 });
 UserSchema.index({ friends: 1 });

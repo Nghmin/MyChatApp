@@ -10,9 +10,20 @@ const ContactWindow = ({ onSelectCategory, friends = [] ,socket, myInfo , onShow
   const onlyGroups = friends.filter(item => item.isGroup);
   const [actionCount, setActionCount] = useState(0);
   // Hàm xử lý nhóm
-  const handleGroupAction = async (groupId, action, groupName) => {
+  const handleGroupAction = async (groupId, action, groupName, isMember = false) => {
+    // Nếu user đã là member, chỉ cần decline (gỡ bỏ lời mời) mà không cần confirm
+    if (isMember && action === 'decline') {
+      executeGroupApi(groupId, 'decline');
+      return;
+    }
+
     if (action === 'decline') {
-      executeGroupApi(groupId, action);
+      showConfirmDialogToast.confirmGeneral(
+        `Từ chối lời mời tham gia nhóm "${groupName}"?`,
+        "Từ chối",
+        "bg-red-600",
+        () => executeGroupApi(groupId, action)
+      );
       return;
     }
 
@@ -20,7 +31,7 @@ const ContactWindow = ({ onSelectCategory, friends = [] ,socket, myInfo , onShow
       `Bạn có chắc chắn muốn tham gia nhóm "${groupName}" không?`,
       "Tham gia",
       "bg-blue-600",
-      () => executeGroupApi(groupId, action)  
+      () => executeGroupApi(groupId, action)
     );
   };
 
@@ -39,9 +50,9 @@ const ContactWindow = ({ onSelectCategory, friends = [] ,socket, myInfo , onShow
         body: JSON.stringify({ groupId, userId: myInfo.userId || myInfo._id })
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
 
+      if (response.ok) {
         if (action === 'accept' && socket) {
           socket.emit('join_group_room', groupId);
           // Xử lý sự kiện khi người gửi lời mời tham gia nhóm
@@ -53,6 +64,12 @@ const ContactWindow = ({ onSelectCategory, friends = [] ,socket, myInfo , onShow
           if (data.systemMessage) {
             socket.emit('send_message', data.systemMessage);
           }
+        } else if (action === 'decline' && socket) {
+          // Notify người gửi lời mời biết rằng lời mời bị decline/gỡ bỏ
+          socket.emit('group_invitation_declined', {
+            groupId,
+            userId: myInfo.userId || myInfo._id
+          });
         }
 
         if (refreshData) refreshData();
@@ -60,6 +77,14 @@ const ContactWindow = ({ onSelectCategory, friends = [] ,socket, myInfo , onShow
         showConfirmDialogToast.success(
           action === 'accept' ? "Gia nhập nhóm thành công!" : "Đã từ chối lời mời"
         );
+      } else {
+        // Xử lý error từ backend
+        const errorMessage = data.message || "Không thể thực hiện thao tác này";
+        showConfirmDialogToast.error(errorMessage);
+        
+        // Làm mới danh sách để cập nhật trạng thái
+        if (refreshData) refreshData();
+        setActionCount(prev => prev + 1);
       }
     } catch (err) {
       console.error("Lỗi xử lý nhóm:", err);
@@ -92,6 +117,19 @@ const ContactWindow = ({ onSelectCategory, friends = [] ,socket, myInfo , onShow
 
   // Giao diện Danh sách nhóm 
   if (onSelectCategory === 'group-list') {
+    // Hàm tính bạn chung trong nhóm
+    const getCommonFriendsInGroup = (group) => {
+      const currentUserFriendsIds = friends
+        .filter(f => !f.isGroup && f.username !== "Cloud của tôi")
+        .map(f => f._id);
+      
+      if (!group.members) return 0;
+      const commonCount = group.members.filter(member => 
+        currentUserFriendsIds.includes(member._id || member)
+      ).length;
+      return commonCount;
+    };
+
     return (
       <div className="flex-1 flex flex-col overflow-hidden h-full">
         <div className="h-14 flex items-center px-6 border-b gap-2 shrink-0">
@@ -100,22 +138,32 @@ const ContactWindow = ({ onSelectCategory, friends = [] ,socket, myInfo , onShow
         </div> 
         {onlyGroups.length > 0 ? (
           <div className="flex-1 overflow-y-auto bg-white p-4 space-y-3 custom-scrollbar">
-            {onlyGroups.map(group => (
-              <div key={group._id} className="bg-white p-4 rounded-xl border border-gray-100 flex items-center gap-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 cursor-pointer">
-                {/* Avatar Nhóm */}
-                <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden border border-gray-100">
-                  {group.avatar || group.image ? (
-                    <img onClick={() => onShowSelectProfile(group)} src={group.avatar || group.image} className="w-full h-full object-cover" alt="" />
-                  ) : (
-                    <Users size={24} className="text-orange-500" />
-                  )}
+            {onlyGroups.map(group => {
+              const isGroupAdmin = group.admin === (myInfo?.userId || myInfo?._id);
+              const commonFriends = getCommonFriendsInGroup(group);
+              return (
+                <div key={group._id} className="bg-white p-4 rounded-xl border border-gray-100 flex items-center gap-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 cursor-pointer">
+                  {/* Avatar Nhóm */}
+                  <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden border border-gray-100">
+                    {group.avatar || group.image ? (
+                      <img onClick={() => onShowSelectProfile(group)} src={group.avatar || group.image} className="w-full h-full object-cover" alt="" />
+                    ) : (
+                      <Users size={24} className="text-orange-500" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-gray-800 truncate">{group.name || group.username}</h4>
+                      {isGroupAdmin && <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">Admin</span>}
+                    </div>
+                    <div className="flex gap-3 text-xs text-gray-500 mt-1">
+                      <span>{group.members?.length || 0} thành viên</span>
+                      {commonFriends > 0 && <span className="text-blue-600 font-medium">{commonFriends} bạn chung</span>}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-gray-800 truncate">{group.name || group.username}</h4>
-                  <p className="text-xs text-gray-500">{group.members?.length || 0} thành viên</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center bg-[#f9fafb] text-center p-6">
@@ -151,7 +199,7 @@ const ContactWindow = ({ onSelectCategory, friends = [] ,socket, myInfo , onShow
           <span className="font-bold">Lời mời vào nhóm</span>
         </div>
         <div className="flex-1 bg-[#f9fafb] overflow-y-auto custom-scrollbar">
-          <GroupRequestList refreshTrigger={actionCount} myId={myInfo.userId || myInfo._id} onAction={handleGroupAction} />
+          <GroupRequestList refreshTrigger={actionCount} myId={myInfo.userId || myInfo._id} onAction={handleGroupAction} socket={socket} onShowSelectProfile={onShowSelectProfile} />
         </div>
       </div>
     );
@@ -165,15 +213,15 @@ const ContactWindow = ({ onSelectCategory, friends = [] ,socket, myInfo , onShow
           <span className="font-bold">Lời mời đã gửi</span>
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#f9fafb]">
-          {/* Phần 1: Lời mời kết bạn cá nhân (Cái cũ của ông) */}
+          {/* Lời mời kết bạn cá nhân */}
           <div className="p-4 pb-0"><span className="text-xs font-bold text-gray-400 uppercase">Kết bạn cá nhân</span></div>
           <SentFriendRequestList onShowSelectProfile={onShowSelectProfile} socket={socket} myInfo={myInfo} />
           
           <div className="my-4 border-t border-gray-100" />
 
-          {/* Phần 2: Lời mời vào nhóm (Cái mới mình vừa làm) */}
+          {/* Lời mời vào nhóm */}
           <div className="p-4 pb-0"><span className="text-xs font-bold text-gray-400 uppercase">Mời vào nhóm</span></div>
-          <SentGroupRequestList />
+          <SentGroupRequestList socket={socket} myInfo={myInfo} />
         </div>
       </div>
     );

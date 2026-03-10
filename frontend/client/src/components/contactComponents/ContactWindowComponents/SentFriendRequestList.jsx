@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, UserMinus, Send } from 'lucide-react';
+import { showConfirmDialogToast } from '../../../utils/toastHelpers';
 
 const SentFriendRequestList = ({ onShowSelectProfile , socket, myInfo}) => {
   const [requests, setRequests] = useState([]);
@@ -27,11 +28,19 @@ const SentFriendRequestList = ({ onShowSelectProfile , socket, myInfo}) => {
     }
   };
 
-  const handleCancel = async (requestId , receiverId) => {
-    if (!window.confirm("Bạn muốn thu hồi lời mời này?")) return;
+  const handleCancel = async (requestId, receiverId, receiverName) => {
+    showConfirmDialogToast.confirmGeneral(
+      `Thu hồi lời mời kết bạn với ${receiverName}?`,
+      "Thu hồi",
+      "bg-red-600",
+      () => executeCancel(requestId, receiverId, receiverName),
+    );
+  };
+
+  const executeCancel = async (requestId, receiverId, receiverName) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/friend/decline`, {
+      const response = await fetch(`http://127.0.0.1:5000/friend/friend/decline`, {
         method: 'DELETE', 
         headers: { 
           'Content-Type': 'application/json',
@@ -44,13 +53,17 @@ const SentFriendRequestList = ({ onShowSelectProfile , socket, myInfo}) => {
         if (socket && receiverId) {
             socket.emit('cancel_friend_request', {
             receiverId: receiverId,
-            senderId: myInfo?.userId || myInfo?._id
+            senderId: myInfo?.userId || myInfo?._id,
+            senderName: myInfo?.username || "Bạn"
             });
         }
         setRequests(prev => prev.filter(r => r._id !== requestId));
-        console.log("Đã hủy lời mời kết bạn" + requestId);
+        console.log("Đã hủy lời mời kết bạn " + requestId);
       }
-    } catch (err) { console.error("Lỗi khi hủy lời mời:", err); }
+    } catch (err) { 
+      console.error("Lỗi khi hủy lời mời:", err);
+      showConfirmDialogToast.error("Không thể thực hiện thao tác này");
+    }
   };
 
   if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-blue-500" /></div>;
@@ -73,7 +86,7 @@ const SentFriendRequestList = ({ onShowSelectProfile , socket, myInfo}) => {
                 </div>
               </div>
               <button 
-                onClick={() => handleCancel(req._id , req.receiver?._id)}
+                onClick={() => handleCancel(req._id, req.receiver?._id, req.receiver?.username)}
                 className="px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors"
               >
                 Thu hồi

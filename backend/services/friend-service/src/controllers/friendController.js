@@ -49,17 +49,22 @@ export const acceptFriendRequest = async (req, res) => {
 // Lấy danh sách lời mời đã nhận 
 export const getReceivedRequests = async (req, res) => {
   try {
-    const { userId } = req.params; 
+    const { userId } = req.params;
+    console.log("Fetching received requests for user:", userId);
+    
     const requests = await FriendRequest.find({ 
       receiver: userId, 
       status: 'pending' 
     })
     .populate('sender', 'username avatar phone') 
-    .sort({ createdAt: -1 }); 
+    .sort({ createdAt: -1 })
+    .limit(100) // Giới hạn 100 requests để tối ưu performance
+    .maxTimeMS(5000); // Timeout 5s nếu query quá lâu
     
-    console.log("Lời mời nhận được cho user", userId, ":", requests);
+    console.log(`Found ${requests.length} pending requests for user ${userId}`);
     res.status(200).json(requests);
   } catch (error) {
+    console.error("Error getting received requests:", error.message);
     res.status(500).json({ message: "Lỗi server khi lấy lời mời" });
   }
 };
@@ -68,17 +73,21 @@ export const getReceivedRequests = async (req, res) => {
 export const getSentRequests = async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log("Fetching sent requests for user:", userId);
 
     const requests = await FriendRequest.find({ 
       sender: userId, 
       status: 'pending' 
     })
     .populate('receiver', 'username avatar phone') 
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .maxTimeMS(5000);
     
-    console.log("Lời mời đã gửi từ user", userId, ":", requests);
+    console.log(`Found ${requests.length} sent requests from user ${userId}`);
     res.status(200).json(requests);
   } catch (error) {
+    console.error("Error getting sent requests:", error.message);
     res.status(500).json({ message: "Lỗi server" });
   }
 };
@@ -141,7 +150,7 @@ export const sendFriendRequest = async (req, res) => {
 // Từ chối hoặc thu hồi lời mời kết bạn
 export const declineFriendRequest = async (req, res) => {
   try {
-    const { requestId } = req.body;
+    const { requestId, isCancel } = req.body;
     console.log("Xóa/Từ chối lời mời ID:", requestId);
 
     const request = await FriendRequest.findByIdAndDelete(requestId);
@@ -150,7 +159,12 @@ export const declineFriendRequest = async (req, res) => {
       return res.status(404).json({ message: "Lời mời không tồn tại hoặc đã được xử lý" });
     }
 
-    res.status(200).json({ message: "Đã xóa lời mời kết bạn" });
+    res.status(200).json({ 
+      message: "Đã xóa lời mời kết bạn",
+      senderId: request.sender.toString(),
+      receiverId: request.receiver.toString(),
+      isCancel: isCancel || false  // true nếu là thu hồi từ người gửi, false nếu là từ chối từ người nhận
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -169,5 +183,52 @@ export const searchUserByPhone = async (req, res) => {
     res.status(200).json(user);
   } catch (error) {
     res.status(500).json({ message: "Lỗi server khi tìm kiếm" , error});
+  }
+};
+
+// Hủy kết bạn 
+export const unfriend = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    let { myId, friendId } = req.body;
+    const targetFriendId = (typeof friendId === 'object' && friendId._id) 
+                           ? friendId._id 
+                           : friendId;
+    console.log(`Xử lý hủy kết bạn giữa ${myId} và ${targetFriendId}`);
+
+    // Lấy thông tin của 2 user
+    const myUser = await User.findById(myId).select('username').session(session);
+    const friendUser = await User.findById(targetFriendId).select('username').session(session);
+
+    // Xóa bạn ở cả 2 phía
+    await User.findByIdAndUpdate(myId, {
+      $pull: { friends: targetFriendId }
+    }, { session });
+
+    await User.findByIdAndUpdate(targetFriendId, {
+      $pull: { friends: myId }
+    }, { session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Tạo system message object
+    const systemMessage = {
+      sender: myId,
+      text: `${myUser?.username} đã hủy kết bạn`,
+      messageType: "system",
+      createdAt: new Date()
+    };
+
+    res.status(200).json({ 
+      message: "Đã hủy kết bạn thành công",
+      systemMessage: systemMessage
+    });
+  } catch (error) {
+    if (session.inTransaction()) await session.abortTransaction();
+    session.endSession();
+    console.error("Lỗi Backend:", error.message);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };

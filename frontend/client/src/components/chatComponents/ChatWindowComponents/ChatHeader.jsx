@@ -1,10 +1,13 @@
-import React from 'react';
+import React , { useEffect } from 'react';
 import { Search, Phone, Video, PanelRight } from 'lucide-react';
 import { TimeLastSeen } from '../../../utils/TimeLastSeen';
 const ChatHeader = ({ selectedUser, onShowSelectProfile,onlineUsers = [] ,onToggleSidebar}) => {
   if (!selectedUser) return null;
   const isOnline = onlineUsers.includes(selectedUser._id);
+  console.log("Selected User:", selectedUser, "Online Users:", onlineUsers, "Is Online?", isOnline);
   const isCloud = selectedUser.username === "Cloud của tôi";
+  const isStranger = !selectedUser.isFriend && !selectedUser.isGroup && !isCloud;
+  
   return (
     <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 z-10 shadow-sm">
       <div 
@@ -13,12 +16,12 @@ const ChatHeader = ({ selectedUser, onShowSelectProfile,onlineUsers = [] ,onTogg
       >
         <div className="relative">
           <img 
-            src={selectedUser.avatar || "/default-avatar.png"} 
+            src={selectedUser.avatar || "/default-avatar.png"}  
             className="w-10 h-10 rounded-full object-cover border" 
             alt="avatar" 
           />
           {/* Chấm xanh thông báo online ngay trên avatar cho đồng bộ */}
-          {isOnline && !isCloud &&(
+          {isOnline && !isCloud && !isStranger && (
             <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
           )}
       </div>
@@ -28,13 +31,23 @@ const ChatHeader = ({ selectedUser, onShowSelectProfile,onlineUsers = [] ,onTogg
           
           {/* Hiển thị trạng thái động */}
           <div className="flex items-center gap-1">
-            {isOnline ? (
+            {isCloud ? (
+              <p className="text-[12px] text-gray-400">Lưu trữ cá nhân</p>
+            ) : selectedUser.isGroup ? (
+              <p className="text-[12px] text-gray-400">
+                {selectedUser.members?.length || 0} thành viên
+              </p>
+            ) : isStranger ? (
+              <p className="text-[12px] text-blue-600 font-medium bg-blue-50 px-1.5 rounded border border-blue-100">
+                Người lạ
+              </p>
+            ) : isOnline ? (
               <p className="text-[12px] text-green-500 font-medium animate-pulse">
                 Đang hoạt động
               </p>
             ) : (
               <p className="text-[12px] text-gray-400 italic">
-                {!isCloud && TimeLastSeen(selectedUser.lastMessageAt)}
+                {TimeLastSeen(selectedUser.lastSeen)}
               </p>
             )}
           </div>
@@ -43,8 +56,12 @@ const ChatHeader = ({ selectedUser, onShowSelectProfile,onlineUsers = [] ,onTogg
       
       <div className="flex items-center gap-1">
         <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><Search size={20} /></button>
-        <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><Phone size={20} /></button>
-        <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><Video size={20} /></button>
+        {!isStranger && (
+          <>
+            <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><Phone size={20} /></button>
+            <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><Video size={20} /></button>
+          </>
+        )}
         <button 
             onClick={onToggleSidebar} 
             className={`p-2 rounded-md transition-colors ${

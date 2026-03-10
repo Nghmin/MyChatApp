@@ -5,6 +5,10 @@ let onlineUsers = new Map();
 export const initSocket = (io) => {
     io.on('connection', (socket) => {
         console.log('User connected:', socket.id);
+        
+        // Gửi danh sách online users hiện tại cho client mới vừa kết nối
+        socket.emit('get_online_users', Array.from(onlineUsers.keys()));
+        
         // Join tất cả nhóm
         socket.on('join_all_groups', ({ groupIds, myId }) => {
             if (myId) {
@@ -48,9 +52,10 @@ export const initSocket = (io) => {
             } else {
                 // Chat cá nhân
                 const roomId = [savedMsg.sender, savedMsg.receiver].sort().join('_');
-                socket.to(roomId).emit('receive_message', savedMsg);
-                // Gửi đến cá nhân receiver để hiện thông báo/unread count nếu họ chưa vào phòng chat
-                socket.to(savedMsg.receiver).emit('receive_message', savedMsg);
+                // Gửi đến tất cả trong phòng private chat
+                io.to(roomId).emit('receive_message', savedMsg);
+                // Cũng gửi đến personal room của receiver để update unread nếu họ không ở room
+                io.to(savedMsg.receiver).emit('receive_message', savedMsg);
             }
         });
 
@@ -87,7 +92,7 @@ export const initSocket = (io) => {
                     onlineUsers.delete(disconnectedUserId);
                 }
                 try {
-                    await User.findByIdAndUpdate(disconnectedUserId, { lastMessageAt: new Date() });
+                    await User.findByIdAndUpdate(disconnectedUserId, { lastSeen: new Date() });
                 } catch (err) { console.error(err); }
                 io.emit('get_online_users', Array.from(onlineUsers.keys()));
             }

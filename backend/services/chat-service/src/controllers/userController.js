@@ -8,54 +8,92 @@ export const getUsers = async (req, res) => {
         const currentUser = await User.findById(currentUserId);
         if (!currentUser) return res.status(404).json({ error: "Không tìm thấy người dùng" });
 
-        // Lấy danh sách bạn bè 
-        const friends = await User.find({ _id: { $in: currentUser.friends }});
-        const friendsWithChatInfo = await Promise.all(friends.map(async (friend) => {
+        // Chuyển danh sách ID bạn bè sang String để so sánh chính xác
+        const friendIdsStrings = currentUser.friends.map(id => id.toString());
+
+        // Định nghĩa bộ lọc tin nhắn cá nhân
+        const privateMessageFilter = {
+            $or: [
+                { groupId: { $exists: false } },
+                { groupId: null }
+            ]
+        };
+
+        // Lấy ID của tất cả những người đã từng nhắn tin với mình 
+        const distinctChatPartners = await Message.distinct("sender", { 
+            receiver: currentUserId, 
+            ...privateMessageFilter
+        });
+        const distinctChatReceivers = await Message.distinct("receiver", { 
+            sender: currentUserId, 
+            ...privateMessageFilter
+        });
+
+        // Kết hợp lấy bạn bè và những người đã từng nhắn tin 
+        const allPartnerIds = Array.from(new Set([
+            ...friendIdsStrings,
+            ...distinctChatPartners.map(id => id.toString()),
+            ...distinctChatReceivers.map(id => id.toString())
+        ])).filter(id => id !== currentUserId); // Loại bỏ chính mình
+
+        // Lấy thông tin chi tiết và tin nhắn cuối cho từng partner
+        const individualChats = await Promise.all(allPartnerIds.map(async (partnerId) => {
+            const partner = await User.findById(partnerId).select('username avatar phone gender birthday lastSeen');
+            if (!partner) return null;
+
+            // Tìm tin nhắn cuối cùng
             const lastMessage = await Message.findOne({
                 $and: [
                     {
                         $or: [
-                            { sender: currentUserId, receiver: friend._id },
-                            { sender: friend._id, receiver: currentUserId }
+                            { sender: currentUserId, receiver: partnerId },
+                            { sender: partnerId, receiver: currentUserId }
                         ]
                     },
-                    {
-                        $or: [
-                            { groupId: { $exists: false } },
-                            { groupId: null }
-                        ]
-                    }
+                    privateMessageFilter
                 ]
             })
-            .populate('sender', 'username avatar') // Thêm dòng này để lấy thông tin người gửi
+            .populate('sender', 'username avatar')
             .sort({ createdAt: -1 });
 
+            const isFriend = friendIdsStrings.includes(partnerId.toString());
+            
+            // Nếu không phải bạn bè và cũng không có tin nhắn thì bỏ qua 
+            if (!isFriend && !lastMessage) return null;
+
             const unreadCount = await Message.countDocuments({
-                sender: friend._id,
+                sender: partnerId,
                 receiver: currentUserId,
-                isRead: false
+                isRead: false,
+                ...privateMessageFilter
             });
 
             return {
-                ...friend.toObject(),
+                ...partner.toObject(),
                 isGroup: false,
+                isFriend: isFriend, 
                 lastMessage,
                 unreadCount
             };
         }));
 
-        // Lấy danh sách nhóm
+        const filteredIndividualChats = individualChats.filter(chat => chat !== null);
+
+        // Xử lý chat nhóm 
         const groups = await Group.find({ members: currentUserId })
             .populate('members', 'username avatar');    
+        
         const groupsWithChatInfo = await Promise.all(groups.map(async (group) => {
             const lastMsg = await Message.findOne({ groupId: group._id })
-                .populate('sender', 'username avatar') // Thêm populate ở đây để lấy tên người gửi trong nhóm
+                .populate('sender', 'username avatar')
                 .sort({ createdAt: -1 });
+            
             const unreadCount = await Message.countDocuments({
                 groupId: group._id,
-                sender: { $ne: currentUserId },
-                'readBy': { $ne: currentUserId } 
+                'readBy': { $ne: currentUserId },
+                sender: { $ne: currentUserId }
             });
+
             return {
                 _id: group._id,
                 username: group.name, 
@@ -63,14 +101,13 @@ export const getUsers = async (req, res) => {
                 isGroup: true,
                 admin: group.admin,
                 members: group.members,
-                membersDetails: group.members,
                 lastMessage: lastMsg || group.lastMessage, 
                 unreadCount: unreadCount
             };
         }));
 
-        // Gộp và Sắp xếp
-        const allConversations = [...friendsWithChatInfo, ...groupsWithChatInfo];
+        // Gộp kết quả chat cá nhân và nhóm, sắp xếp theo thời gian tin nhắn cuối cùng
+        const allConversations = [...filteredIndividualChats, ...groupsWithChatInfo];
 
         allConversations.sort((a, b) => {
             const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;

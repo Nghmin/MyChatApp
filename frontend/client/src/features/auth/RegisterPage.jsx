@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, UserPlus, User, Phone, Sparkles, ArrowLeft, MessageCircle, ShieldCheck, Zap } from 'lucide-react';
+import { showConfirmDialogToast } from '../../utils/toastHelpers';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
+      showConfirmDialogToast.error("Mật khẩu xác nhận không khớp!");
       return;
     }
     setIsLoading(true);
@@ -31,13 +32,13 @@ const Register = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        alert("Đăng ký thành công!");
-        navigate('/login'); 
+        showConfirmDialogToast.success("Đăng ký thành công!");
+        setTimeout(() => navigate('/login'), 1000); 
       } else {
-        alert(data.message); 
+        showConfirmDialogToast.error(data.message); 
       }
     } catch (err) {
-      alert("Không thể kết nối đến Server!");
+      showConfirmDialogToast.error("Không thể kết nối đến Server!");
     } finally {
       setIsLoading(false);
     }

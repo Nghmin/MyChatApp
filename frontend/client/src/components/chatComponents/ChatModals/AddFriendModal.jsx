@@ -34,7 +34,7 @@ const AddFriendModal = ({ isOpen, onClose, onSendRequest }) => {
       });
 
       if (response.status === 404) {
-        setError('Số điện thoại chưa đăng ký tài khoản');
+        setError('Số điện thoại chưa được đăng ký');
         setSearching(false);
         return;
       }
@@ -115,7 +115,7 @@ const AddFriendModal = ({ isOpen, onClose, onSendRequest }) => {
 
   const getInputStatusClass = () => {
     if (error) return 'border-red-500 bg-red-50 focus:border-red-600';
-    if (foundUser && !error) return 'border-green-500 bg-green-50 focus:border-green-600';
+    if (foundUser && !error) return 'border-blue-500 bg-blue-50 focus:border-blue-600';
     return 'border-gray-200 bg-gray-50 focus:border-blue-500';
   };
 
@@ -138,7 +138,7 @@ const AddFriendModal = ({ isOpen, onClose, onSendRequest }) => {
           <div className="space-y-4">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                <span className={`font-bold text-sm border-r pr-2 transition-colors ${error ? 'text-red-400' : foundUser ? 'text-green-400' : 'text-gray-400'}`}>+84</span>
+                <span className={`font-bold text-sm border-r pr-2 transition-colors ${error ? 'text-red-400' : foundUser ? 'text-blue-400' : 'text-gray-400'}`}>+84</span>
               </div>
               <input 
                 autoFocus
@@ -162,7 +162,7 @@ const AddFriendModal = ({ isOpen, onClose, onSendRequest }) => {
               </div>
             )}
 
-            <div className={`min-h-[100px] flex items-center justify-center border-2 border-dashed rounded-xl p-4 transition-colors ${foundUser ? 'border-green-200 bg-green-50/30' : 'border-gray-100'}`}>
+            <div className={`min-h-[100px] flex items-center justify-center border-2  rounded-xl p-4 transition-colors ${foundUser ? 'border-blue-200 bg-blue-50/30' : 'border-gray-100'}`}>
               {foundUser ? (
                 <div className="flex items-center gap-4 w-full animate-in fade-in slide-in-from-bottom-2">
                   <div className="relative">
@@ -171,7 +171,7 @@ const AddFriendModal = ({ isOpen, onClose, onSendRequest }) => {
                       alt="avatar" 
                       className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
                     />
-                    <div className="absolute -bottom-1 -right-1 bg-green-500 p-1 rounded-full border-2 border-white">
+                    <div className="absolute -bottom-1 -right-1 bg-blue-500 p-1 rounded-full border-2 border-white">
                       <UserCheck size={12} className="text-white" />
                     </div>
                   </div>

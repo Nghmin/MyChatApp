@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 // import {FriendRequestToast} from '../../components/toastComponents/FriendRequestToast';
+import {showConfirmDialogToast} from '../../utils/toastHelpers';
 import { showFirendRequestNotification } from '../../utils/toastHelpers';
 import 'react-toastify/dist/ReactToastify.css';
 import Sidebar from '../../components/SidebarNav';
@@ -11,7 +13,6 @@ import CreateGroupModal from '../../components/chatComponents/ChatModals/CreateG
 import ChatWindow from '../../components/chatComponents/ChatWindowComponents/ChatWindow';
 import ContactItempList from '../../components/contactComponents/ContactItemComponents/ContactItemList'; 
 import ContactWindow from '../../components/contactComponents/ContactWindowComponents/ContactWindow';
-
 import { io } from 'socket.io-client';
 const ChatPage = () => {
   const [friends, setFriends] = useState([]);
@@ -33,6 +34,9 @@ const ChatPage = () => {
 
   const socket = useRef(null);
   const selectedUserRef = useRef(null);
+  const processedMessagesRef = useRef(new Set()); // Track processed message IDs to prevent duplicates
+
+  const navigate = useNavigate();
 
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('user');
@@ -41,6 +45,7 @@ const ChatPage = () => {
 
   
   const myId = currentUser?.userId || currentUser?._id;
+  
   // Hàm lấy danh sách bạn bè từ server
   const fetchFriends = async () => {
     if (!currentUser) return;
@@ -128,6 +133,12 @@ const ChatPage = () => {
             friendData: data.friendData  
           });
         }
+        // Giảm request count ngay lập tức
+        setRequestCounts(prev => ({
+          ...prev,
+          total: Math.max(0, prev.total - 1),
+          friend: Math.max(0, prev.friend - 1)
+        }));
         refreshFriendData();
         showFirendRequestNotification.success("Đã trở thành bạn bè!");
       }
@@ -155,7 +166,14 @@ const ChatPage = () => {
 
   // Hàm logic cập nhật Tin nhắn và Unread Count 
   const updateFriendsWithLastMessage = (msg) => {
-  console.log("Dữ liệu socket nhóm:", msg);
+  // Prevent duplicate message processing
+  if (processedMessagesRef.current.has(msg._id)) {
+    console.log("⏭️ Bỏ qua tin nhắn trùng:", msg._id);
+    return;
+  }
+  processedMessagesRef.current.add(msg._id);
+
+  console.log("📨 Dữ liệu tin nhắn từ socket:", msg);
   setFriends(prevFriends => {
     const updatedFriends = prevFriends.map(f => {
       const senderId = (msg.sender?._id || msg.sender || "").toString(); 
@@ -167,17 +185,22 @@ const ChatPage = () => {
       if (msgGroupId && friendId === msgGroupId) {
         const isCurrentChat = selectedUserRef.current?._id === msgGroupId;
         
-        let newCount = f.unreadCount || 0;
-        if (msg.isDeleted) {
-            newCount = isCurrentChat ? 0 : newCount;
-        } else {
-            newCount = (isCurrentChat || senderId === myId) ? 0 : newCount + 1;
+        let unreadCount = f.unreadCount || 0;
+        
+        if (isCurrentChat) {
+          // Đang xem chat này thì reset unreadCount
+          unreadCount = 0;
+        } else if (senderId !== myId && !msg.isDeleted) {
+          // Tin từ người khác, chưa mở chat → cộng thêm 1
+          unreadCount = (f.unreadCount || 0) + 1;
+          console.log(`Nhóm ${f._id}: unreadCount ${f.unreadCount || 0} → ${unreadCount}`);
         }
 
         return {
           ...f,
           lastMessage: msg,
-          unreadCount: newCount
+          lastSeen: msg.createdAt,
+          unreadCount: unreadCount
         };
       }
 
@@ -187,26 +210,30 @@ const ChatPage = () => {
       if (!msgGroupId && isPartner) {
         // Nếu là Cloud
         if (isCloud && senderId === myId && receiverId === myId) {
-          return { ...f, lastMessage: msg };
+          return { ...f, lastMessage: msg, lastSeen: msg.createdAt };
         }
         
         // Nếu là bạn bè
         if (!isCloud) {
           const isCurrentChat = selectedUserRef.current?._id === friendId;
-          const isIncoming = senderId !== myId; 
+          const isIncoming = senderId !== myId;
           
-          let newCount = f.unreadCount || 0;
-          if (msg.isDeleted) {
-              newCount = isCurrentChat ? 0 : newCount;
-          } else {
-              // Tin mới: Tăng 1 nếu người khác gửi và ko mở chat
-              newCount = (isIncoming && !isCurrentChat) ? newCount + 1 : (isCurrentChat ? 0 : newCount);
+          let unreadCount = f.unreadCount || 0;
+          
+          if (isCurrentChat) {
+            // Đang xem chat này thì reset unreadCount
+            unreadCount = 0;
+          } else if (isIncoming && !msg.isDeleted) {
+            // Tin từ người khác, chưa mở chat → cộng thêm 1
+            unreadCount = (f.unreadCount || 0) + 1;
+            console.log(`📍 Bạn ${f.username} (${friendId}): unreadCount ${f.unreadCount || 0} → ${unreadCount}`);
           }
 
           return {
             ...f,
             lastMessage: msg,
-            unreadCount: newCount
+            lastSeen: msg.createdAt,
+            unreadCount: unreadCount
           };
         }
       }
@@ -237,6 +264,12 @@ const ChatPage = () => {
       showFirendRequestNotification.friendRequest(formattedData, () => 
         handleQuickAccept(formattedData.requestId, formattedData.senderId)
       );
+      // Cập nhật request counts ngay lập tức
+      setRequestCounts(prev => ({
+        ...prev,
+        total: prev.total + 1,
+        friend: prev.friend + 1
+      }));
       refreshFriendData();
     };
 
@@ -267,7 +300,7 @@ const ChatPage = () => {
 
     // Hàm cập nhật số lượng lời mời kết bạn 
     const handleFriendAcceptedSuccess = (data) => {
-      console.log("✓ Người bạn đã chấp nhận lời mời", data);
+      console.log("Người bạn đã chấp nhận lời mời", data);
       setFriends(prev => {
         const friendExists = prev.find(f => f._id === data.senderId);
         if (friendExists) {
@@ -280,7 +313,7 @@ const ChatPage = () => {
 
     // Hàm cập nhật số lượng người trong nhóm khi người khác join
     const handleGroupMemberJoined = (data) => {
-      console.log("✓ Có thành viên mới join nhóm:", data);
+      console.log("Có thành viên mới join nhóm:", data);
       const { groupId, updatedGroup } = data;
       
       // Cập nhật danh sách friends
@@ -295,42 +328,184 @@ const ChatPage = () => {
       setSelectedUser(prev => 
         (prev?._id === groupId ? { ...prev, ...updatedGroup } : prev)
       );
+      refreshFriendData();
+    };
+
+    // Hàm xử lý khi lời mời nhóm bị thu hồi
+    const handleGroupInvitationCancelled = (data) => {
+      console.log("Lời mời nhóm bị thu hồi", data);
+      showFirendRequestNotification.success(`${data.inviterName} đã thu hồi lời mời tham gia nhóm`);
+      // Giảm badge
+      setRequestCounts(prev => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1),
+        group: Math.max(0, prev.group - 1)
+      }));
     };
 
     // Hàm cập nhật số lượng lời mời kết bạn
     const handleSentFriendRequest = (data) => {
       console.log("Đã gửi lời mời kết bạn", data);
-      fetchRequestCounts();
+      // Tăng badge ngay mà không cần fetch lại
+      setRequestCounts(prev => ({
+        ...prev,
+        total: prev.total + 1,
+        friend: prev.friend + 1
+      }));
     };
 
     // Hàm cập nhật số lượng lời mời nhóm
     const handleSentGroupInvitation = (data) => {
       console.log("Đã gửi lời mời nhóm", data);
-      fetchRequestCounts();
+      // Tăng badge ngay
+      setRequestCounts(prev => ({
+        ...prev,
+        total: prev.total + 1,
+        group: prev.group + 1
+      }));
     };
+
+    // Hàm xử lý khi lời mời bị thu hồi
+    const handleFriendRequestCancelled = (data) => {
+      console.log("✗ Lời mời kết bạn bị thu hồi", data);
+      showFirendRequestNotification.success(`${data.senderName} đã thu hồi lời mời kết bạn`);
+      // Giảm badge
+      setRequestCounts(prev => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1),
+        friend: Math.max(0, prev.friend - 1)
+      }));
+    };
+
+    // Hàm xử lý hủy kết bạn
+    const handleUnfriendUpdated = async (data) => {
+      console.log("Cập nhật hủy kết bạn", data);
+      // Refresh lại toàn bộ danh sách để đồng bộ dữ liệu
+      try {
+        const token = localStorage.getItem('token');
+        const myID = myId;
+        const response = await fetch(`http://127.0.0.1:5000/chat/users?currentUserId=${myID}`,{
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          }
+        });
+        if (response.ok) {
+          const newFriendsData = await response.json();
+          const myCloud = {
+            _id: myID,
+            username: "Cloud của tôi",
+            avatar: "https://img.icons8.com/fluency/48/cloud.png", 
+          };
+          const updatedFriendsList = [myCloud, ...newFriendsData];
+          setFriends(updatedFriendsList);
+          
+          // Cập nhật selectedUser nếu đó là người vừa unfriend
+          if (selectedUserRef.current?._id === data.friendId) {
+            const updatedFriend = updatedFriendsList.find(f => f._id === data.friendId);
+            if (updatedFriend) {
+              setSelectedUser(updatedFriend);
+            } else {
+              const unfriendedUser = {
+                ...selectedUserRef.current,
+                isFriend: false
+              };
+              setSelectedUser(unfriendedUser);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi refresh danh sách bạn:", err);
+      }
+      // Đóng profile modal
+      setIsProfileModalOpen(false);
+      // Hiển thị thông báo
+      showConfirmDialogToast.success(`${data.friendName} đã hủy kết bạn với bạn`);
+    };
+
+    // Hàm xử lý rời nhóm
+    const handleUserLeftGroup = (data) => {
+      console.log("Thành viên đã rời nhóm:", data.groupId);
+      refreshFriendData();
+    };
+
+    // Hàm xử lý cập nhật avatar nhóm
+    const handleGroupAvatarUpdated = (data) => {
+      console.log("Avatar nhóm đã được cập nhật:", data);
+      const { groupId, updatedGroup } = data;
+      
+      // Merge với dữ liệu cũ để không mất các field
+      setFriends(prev => 
+        prev.map(f => {
+          if (f._id === groupId) {
+            return { ...f, ...updatedGroup };
+          }
+          return f;
+        })
+      );
+      
+      // Cập nhật modal nếu đang mở
+      setGroupForModal(prev => 
+        prev?._id === groupId ? { ...prev, ...updatedGroup } : prev
+      );
+      
+      // Cập nhật selectedUser nếu là nhóm hiện tại
+      setSelectedUser(prev => 
+        prev?._id === groupId ? { ...prev, ...updatedGroup } : prev
+      );
+    };
+    
 
     // Đăng ký sự kiện
     s.on('receive_friend_request', handleRequest);
     s.on('friend_request_accepted', handleAccepted);
     s.on('friend_accepted_success', handleFriendAcceptedSuccess);
+    s.on('friend_request_cancelled', handleFriendRequestCancelled);
     s.on('receive_group_invite', handleGroupInvite);
     s.on('group_member_joined', handleGroupMemberJoined);
     s.on('group_joined_success', handleJoinedGroup);
-    s.on('get_online_users', (userIds) => setOnlineUsers(userIds));
-    s.on('receive_message', updateFriendsWithLastMessage);
-    s.on('recall_message', updateFriendsWithLastMessage);
+    s.on('group_invitation_cancelled', handleGroupInvitationCancelled);
+    s.on('group_avatar_updated', handleGroupAvatarUpdated);
+    s.on('receive_message', (msg) => {
+      console.log("📬 Received message event:", msg._id);
+      updateFriendsWithLastMessage(msg);
+      // Cập nhật lastSeen cho selectedUser để hiển thị thời gian hoạt động cuối
+      if (selectedUserRef.current && (selectedUserRef.current._id === msg.sender || selectedUserRef.current._id === msg.groupId)) {
+        setSelectedUser(prev => prev && prev._id === selectedUserRef.current._id ? { ...prev, lastSeen: msg.createdAt } : prev);
+      }
+    });
+    s.on('recall_message', (msg) => {
+      console.log("🔄 Recalled message:", msg._id);
+      updateFriendsWithLastMessage(msg);
+      if (selectedUserRef.current && (selectedUserRef.current._id === msg.sender || selectedUserRef.current._id === msg.groupId)) {
+        setSelectedUser(prev => prev && prev._id === selectedUserRef.current._id ? { ...prev, lastSeen: msg.createdAt } : prev);
+      }
+    });
     s.on('new_group_created', handleNewGroup);
-    s.on('group_created_update_converlist', handleNewGroup);  // Cập nhật converlist khi tạo nhóm
+    s.on('group_created_update_converlist', handleNewGroup);  
     s.on('sent_friend_request', handleSentFriendRequest);
     s.on('sent_group_invitation', handleSentGroupInvitation);
+    s.on('unfriend_updated', handleUnfriendUpdated);
+    s.on('unfriend_action', handleUnfriendUpdated);
+    s.on('unfriend_confirmed', handleUnfriendUpdated);
+    s.on('user_left_group', handleUserLeftGroup);
+    s.on('get_online_users', (users) => {
+      console.log("Online users:", users);
+      setOnlineUsers(users || []);
+    });
+    
     
     return () => {
       s.off('receive_friend_request', handleRequest);
       s.off('friend_request_accepted', handleAccepted);
       s.off('friend_accepted_success', handleFriendAcceptedSuccess);
+      s.off('friend_request_cancelled', handleFriendRequestCancelled);
       s.off('receive_group_invite', handleGroupInvite);
       s.off('group_member_joined', handleGroupMemberJoined);
       s.off('group_joined_success', handleJoinedGroup);
+      s.off('group_invitation_cancelled', handleGroupInvitationCancelled);
+      s.off('group_avatar_updated', handleGroupAvatarUpdated);
       s.off('get_online_users');
       s.off('receive_message', updateFriendsWithLastMessage);
       s.off('recall_message', updateFriendsWithLastMessage);
@@ -338,8 +513,12 @@ const ChatPage = () => {
       s.off('group_created_update_converlist', handleNewGroup);
       s.off('sent_friend_request', handleSentFriendRequest);
       s.off('sent_group_invitation', handleSentGroupInvitation);
+      s.off('unfriend_updated', handleUnfriendUpdated);
+      s.off('unfriend_action', handleUnfriendUpdated);
+      s.off('unfriend_confirmed', handleUnfriendUpdated);
+      s.off('user_left_group', handleUserLeftGroup);
     };
-  }, [myId, groupForModal, selectedUser?._id]);
+  }, [myId, groupForModal, selectedUser?._id , refreshFriendData]);
 
   // Vào phòng chat khi chọn người dùng
   useEffect(() => {
@@ -353,32 +532,64 @@ const ChatPage = () => {
   // Hàm lấy số lượng lời mời kết bạn
   const fetchRequestCounts = async () => {
     if (!myId) return;
-      try {
-          const token = localStorage.getItem('token');
-          const headers = { 'Authorization': `Bearer ${token}` };
+    try {
+        const token = localStorage.getItem('token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+        
+        // Thêm timeout 10s cho mỗi request
+        const fetchWithTimeout = (url, timeout = 10000) => {
+            return Promise.race([
+                fetch(url, { headers }),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('API timeout')), timeout)
+                )
+            ]);
+        };
 
-          // Gọi song song 2 API
-          const [resFriend, resGroup] = await Promise.all([
-              fetch(`http://127.0.0.1:5000/friend/friend/friend/received/${myId}`, { headers }),
-              fetch(`http://127.0.0.1:5000/friend/friend/group/pending/${myId}`, { headers })
-          ]);
+        try {
+            const [resFriend, resGroup] = await Promise.all([
+                fetchWithTimeout(`http://127.0.0.1:5000/friend/friend/friend/received/${myId}`),
+                fetchWithTimeout(`http://127.0.0.1:5000/friend/friend/group/pending/${myId}`)
+            ]);
 
-          const dataFriend = await resFriend.json();
-          const dataGroup = await resGroup.json();
+            let friendLen = 0;
+            let groupLen = 0;
+            
+            // Parse friend requests
+            if (resFriend.ok) {
+                try {
+                    const dataFriend = await resFriend.json();
+                    friendLen = Array.isArray(dataFriend) ? dataFriend.length : 0;
+                } catch (e) {
+                    console.warn("Lỗi parse friend requests:", e);
+                    friendLen = 0;
+                }
+            }
+            
+            // Parse group invites
+            if (resGroup.ok) {
+                try {
+                    const dataGroup = await resGroup.json();
+                    groupLen = Array.isArray(dataGroup) ? dataGroup.length : 0;
+                } catch (e) {
+                    console.warn("Lỗi parse group invites:", e);
+                    groupLen = 0;
+                }
+            }
 
-          
-          const friendLen = Array.isArray(dataFriend) ? dataFriend.length : 0;
-          const groupLen = Array.isArray(dataGroup) ? dataGroup.length : 0;
-
-          setRequestCounts({
-              total: friendLen + groupLen,
-              friend: friendLen,
-              group: groupLen
-          });
-      } catch (err) {
-          console.error("Lỗi khi cập nhật số lượng lời mời:", err);
-      }
-  };
+            setRequestCounts({
+                total: friendLen + groupLen,
+                friend: friendLen,
+                group: groupLen
+            });
+        } catch (timeoutErr) {
+            console.warn("API timeout khi lấy lời mời, bỏ qua:", timeoutErr.message);
+            // Giữ nguyên requestCounts cũ, không update
+        }
+    } catch (err) {
+        console.error("Lỗi khi cập nhật số lượng lời mời:", err);
+    }
+  }; 
 
   const openMyProfile = () => {
     setUserForModal(currentUser);
@@ -402,7 +613,6 @@ const ChatPage = () => {
     setSelectedUser(user);
     selectedUserRef.current = user;
     setFriends(prev => prev.map(f => f._id === user._id ? { ...f, unreadCount: 0 } : f));
-    if (user.isGroup) return;
     try {
       const token = localStorage.getItem('token');
       const myRealId = currentUser.userId || currentUser._id;
@@ -467,7 +677,7 @@ const ChatPage = () => {
           receiverPhone: targetPhoneOrId
         })
       });
-      console.log(targetPhoneOrId);
+      console.log(`Gửi lời mời kết bạn đến ${targetPhoneOrId}...`, response);
       const data = await response.json();
 
       if (response.ok) {
@@ -485,6 +695,7 @@ const ChatPage = () => {
         });
         }
         showFirendRequestNotification.success("Đã gửi lời mời kết bạn thành công!");
+        fetchRequestCounts();
         return { success: true };
       } else {
         return { success: false, message: data.message };
@@ -493,6 +704,70 @@ const ChatPage = () => {
       console.log(err);
       return { success: false, message: "Lỗi kết nối server" };
     }
+  };
+
+  // Hàm xử lý hủy kết bạn
+  const handleUnfriend = async (friend) => {
+    showConfirmDialogToast.confirmGeneral(
+      `Xác nhận xóa kết bạn với ${friend.username}?`,
+      "Xóa nhận",
+      "bg-red-600",
+      async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const friendId = typeof friend === 'object' ? friend._id : friend;
+          const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/unfriend`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ myId: myId, friendId: friendId })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            showConfirmDialogToast.success("Đã xóa kết bạn thành công");
+            
+            // Đóng profile modal
+            setIsProfileModalOpen(false);
+            
+            // Refresh lại toàn bộ danh sách bạn để sync đúng
+            const token = localStorage.getItem('token');
+            const myID = myId;
+            const response2 = await fetch(`http://127.0.0.1:5000/chat/users?currentUserId=${myID}`,{
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+              }
+            });
+            if (response2.ok) {
+              const newFriendsData = await response2.json();
+              const updatedFriend = newFriendsData.find(f => f._id === friendId);
+              // Cập nhật selectedUser nếu đó là người vừa unfriend
+              if (selectedUserRef.current?._id === friendId && updatedFriend) {
+                setSelectedUser(updatedFriend);
+              }
+            }
+            
+            // Emit socket event
+            if (socket.current) {
+              socket.current.emit('unfriend_action', {
+                myId: myId,
+                friendId: friendId,
+                myName: currentUser?.username,
+                friendName: friend.username,
+                systemMessage: data.systemMessage
+              });
+            }
+          }
+        } catch (error) {
+          showConfirmDialogToast.error("Lỗi khi xóa kết bạn");
+          console.log("Lỗi khi xóa kết bạn:", error);
+        }
+      }
+    );
   };
 
   // Hàm mở modal tạo nhóm mới
@@ -528,6 +803,8 @@ const ChatPage = () => {
           })
         });
 
+        const data = await response.json();
+
         if (response.ok) {
           
           if (socket.current) {
@@ -535,11 +812,14 @@ const ChatPage = () => {
               groupId: groupData.groupId,
               inviteeIds: groupData.newMembers,
               inviterId: myId,
-              groupName: selectedUser.name
+              groupName: groupData.name
             });
           }
           showFirendRequestNotification.success("Đã gửi lời mời vào nhóm!");
           setIsCreateGroupOpen(false);
+        } else {
+          // Xử lý error từ backend
+          showFirendRequestNotification.error(data.message || "Không thể gửi lời mời");
         }
       } else {
       
@@ -548,17 +828,69 @@ const ChatPage = () => {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ ...groupData, adminId: myId })
         });
+        
         if (response.ok) {
           const newGroup = await response.json();
           if (socket.current) socket.current.emit('create_group', newGroup);
           showFirendRequestNotification.success("Tạo nhóm thành công!");
           setIsCreateGroupOpen(false);
           refreshFriendData();
+        } else {
+          const data = await response.json();
+          showFirendRequestNotification.error(data.message || "Không thể tạo nhóm");
         }
       }
     } catch (error) {
+      console.log("Lỗi nhóm: ",error);
       showFirendRequestNotification.error("Thao tác thất bại");
     }
+  };
+
+  // Hàm rời nhóm
+  const handleLeaveGroup = async (groupId) => {
+  showConfirmDialogToast.confirmGeneral(
+    "Bạn có chắc chắn muốn rời nhóm này?",
+    "Rời nhóm",
+    "bg-red-600",
+    async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://127.0.0.1:5000/friend/friend/group/leave-group`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ userId: myId, groupId })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          socket.current?.emit('leave_group', { 
+            groupId, 
+            userId: myId,
+            systemMessage: result.systemMessage
+          });
+
+          showConfirmDialogToast.success("Đã rời nhóm");
+          setSelectedUser(null);
+          refreshFriendData();
+        }
+      } catch (error) {
+        showConfirmDialogToast.error("Lỗi khi rời nhóm");
+      }
+    }
+  );
+};
+
+  // Hàm đăng xuất
+  const handleLogout = () => {
+    if (socket.current) {
+      socket.current.disconnect();
+    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
+    setFriends([]);
+    setCurrentUser(null);
+    navigate('/login'); 
   };
 
   return (
@@ -575,6 +907,7 @@ const ChatPage = () => {
         onTabChange={setActiveTab}
         requestCounts={requestCounts.total}
         friends={friends}
+        onLogout={handleLogout}
       />
       {/* Danh sách Tin nhắn / Danh bạ */}
       {activeTab === 'chat' ? (
@@ -609,6 +942,8 @@ const ChatPage = () => {
             onSendFriendRequest={handleSendFriendRequest}
             onOpenCreateNewGroup={openCreateNewGroup}
             onOpenAddMembersToGroup={openAddMembersToGroup}
+            onUnfriend={handleUnfriend}
+            onLeaveGroup={handleLeaveGroup}
           />
         ) : (
           <ContactWindow
@@ -622,25 +957,38 @@ const ChatPage = () => {
         )}
       </div>
       {/* Modal Profile */}
+        <GroupInfoModal 
+        isOpen={isGroupInfoModalOpen}
+        onClose={() => setIsGroupInfoModalOpen(false)}
+        groupData={groupForModal}
+        currentUserId={myId}
+        friends={friends}
+        onShowProfile={openSelectProfile}
+        onAddMember={() => {
+          setIsGroupInfoModalOpen(false);
+          openAddMembersToGroup(groupForModal);
+        }}
+        onOpenCreateGroup={openCreateNewGroup}
+        onGroupUpdated={(updatedGroup) => {
+          // Merge với dữ liệu cũ để không mất các field
+          const mergedGroup = { ...groupForModal, ...updatedGroup };
+          setGroupForModal(mergedGroup);
+          setFriends(prev => prev.map(f => f._id === updatedGroup._id ? mergedGroup : f));
+          setSelectedUser(prev => prev?._id === updatedGroup._id ? mergedGroup : prev);
+        }}
+        socket={socket.current}
+      />
+
       <ProfileModal 
         isOpen={isProfileModalOpen} 
         onClose={() => setIsProfileModalOpen(false)}
         targetUser={userForModal}
         myInfo={currentUser}
         onUpdateSuccess={handleUpdateSuccess}
+        onSendFriendRequest={handleSendFriendRequest}
       />
 
-      <GroupInfoModal 
-        isOpen={isGroupInfoModalOpen}
-        onClose={() => setIsGroupInfoModalOpen(false)}
-        groupData={groupForModal}
-        currentUserId={myId}
-        onAddMember={() => {
-          setIsGroupInfoModalOpen(false);
-          openAddMembersToGroup(groupForModal);
-        }}
-        onOpenCreateGroup={openCreateNewGroup}
-      />
+  
 
       <CreateGroupModal 
         isOpen={isCreateGroupOpen}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, MessageCircle, ShieldCheck, Zap, Globe } from 'lucide-react';
+import { showConfirmDialogToast } from '../../utils/toastHelpers';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -26,13 +27,13 @@ const Login = () => {
       if (response.ok) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data));
-        alert("Chào mừng " + data.username + " quay trở lại!");
-        navigate('/chat');
+        showConfirmDialogToast.success("Chào mừng " + data.username + " quay trở lại!");
+        setTimeout(() => navigate('/chat'), 1000);
       } else {
-        alert(data.message);
+        showConfirmDialogToast.error(data.message);
       }
     } catch (err) {
-      alert("Lỗi kết nối Server!");
+      showConfirmDialogToast.error("Lỗi kết nối Server!");
     } finally {
       setIsLoading(false);
     }

@@ -89,16 +89,18 @@ export const createMessage = async (req, res) => {
                 $set: { lastMessage: lastMsgData }
             });
         } else {
-            // Cập nhật lastMessage cho cả 2 user (CỰC KỲ QUAN TRỌNG để khi F5 không bị mất tin nhắn cuối)
-            await User.updateMany(
-                { _id: { $in: [senderId, receiverId] } },
-                {
-                    $set: {
-                        lastMessage: lastMsgData,
-                        lastMessageAt: savedMessage.createdAt
-                    }
+            // Cập nhật lastMessage cho cả 2 user nhưng chỉ cập nhật lastSeen của người gửi
+            // (Receiver chỉ xem tin nhắn khi mở chat, không phải khi nhận socket event)
+            await User.findByIdAndUpdate(senderId, {
+                $set: {
+                    lastMessage: lastMsgData,
+                    lastSeen: savedMessage.createdAt
                 }
-            );
+            });
+            // Cập nhật lastMessage cho receiver nhưng không cập nhật lastSeen
+            await User.findByIdAndUpdate(receiverId, {
+                $set: { lastMessage: lastMsgData }
+            });
         }
 
         res.status(201).json(savedMessage);
@@ -188,15 +190,17 @@ export const recallMessage = async (req, res) => {
                     $set: { lastMessage: updatedLastMsg }
                 });
             } else {
-                await User.updateMany(
-                    { _id: { $in: [message.sender, message.receiver] } },
-                    {
-                        $set: {
-                            lastMessage: updatedLastMsg,
-                            lastMessageAt: message.createdAt
-                        }
+                // Chỉ cập nhật lastSeen của người gửi (người thu hồi)
+                await User.findByIdAndUpdate(message.sender, {
+                    $set: {
+                        lastMessage: updatedLastMsg,
+                        lastSeen: message.createdAt
                     }
-                );
+                });
+                // Cập nhật lastMessage cho receiver nhưng không cập nhật lastSeen
+                await User.findByIdAndUpdate(message.receiver, {
+                    $set: { lastMessage: updatedLastMsg }
+                });
             }
         }
         res.status(200).json(message);

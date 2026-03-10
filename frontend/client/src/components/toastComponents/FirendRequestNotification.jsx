@@ -8,7 +8,7 @@ const FirendRequestNotification = ({ message, onConfirm, toastId }) => {
       <div className="flex gap-2 h-8">
         <button 
           onClick={() => { onConfirm(); toast.dismiss(toastId); }}
-          className="flex-1 bg-red-500 text-white rounded-md text-[12px] font-bold hover:bg-red-600 transition-colors"
+          className="flex-1 bg-red-500 text-white rounded-md text-[12px] font-bold hover:bg-blue-600 transition-colors"
         >
           Xác nhận
         </button>

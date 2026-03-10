@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MailOpen, Check, X, Loader2 } from 'lucide-react';
-import { showFirendRequestNotification } from '../../../utils/toastHelpers';
+import { showFirendRequestNotification, showConfirmDialogToast } from '../../../utils/toastHelpers';
 const FriendRequestList = ({ socket, myInfo, onShowSelectProfile, refreshData }) => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -9,6 +9,38 @@ const FriendRequestList = ({ socket, myInfo, onShowSelectProfile, refreshData })
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  // Thiết lập socket listeners để cập nhật real-time
+  useEffect(() => {
+    if (!socket) return;
+
+    // Xử lý khi nhận lời mời kết bạn mới
+    const handleNewRequest = (data) => {
+      console.log("Lời mời kết bạn mới:", data);
+      const newRequest = {
+        _id: data._id,
+        sender: data.sender || {
+          _id: data.senderId,
+          username: data.senderName,
+          avatar: data.senderAvatar
+        }
+      };
+      setRequests(prev => [newRequest, ...prev]);
+    };
+
+    // Xử lý khi lời mời bị hủy
+    const handleRequestCancelled = (data) => {
+      setRequests(prev => prev.filter(req => req.sender?._id !== data.senderId));
+    };
+
+    socket.on('receive_friend_request', handleNewRequest);
+    socket.on('friend_request_cancelled', handleRequestCancelled);
+
+    return () => {
+      socket.off('receive_friend_request', handleNewRequest);
+      socket.off('friend_request_cancelled', handleRequestCancelled);
+    };
+  }, [socket]);
 
   const fetchRequests = async () => {
     try {
@@ -36,7 +68,7 @@ const FriendRequestList = ({ socket, myInfo, onShowSelectProfile, refreshData })
         onShowSelectProfile(sender);
     };
 
-  const handleAction = async (requestId, senderId, action) => {
+  const executeAction = async (requestId, senderId, senderName, action) => {
     try {
         const token = localStorage.getItem('token');
         const endpoint = action === 'accept' ? 'accept' : 'decline';
@@ -58,20 +90,16 @@ const FriendRequestList = ({ socket, myInfo, onShowSelectProfile, refreshData })
                     senderId: senderId, 
                     receiverId: myInfo?.userId || myInfo?._id,
                     receiverName: myInfo?.username || "Một người bạn",
-                    senderName: action === 'accept' ? data.friendData?.username : undefined,
-                    friendData: action === 'accept' ? data.friendData : undefined  // Truyền dữ liệu bạn vừa chấp nhận
+                    senderName: action === 'accept' ? data.friendData?.username : senderName,
+                    friendData: action === 'accept' ? data.friendData : undefined
                 });
             }
             if (action === 'accept') {
-                showFirendRequestNotification.success("Đã chấp nhận lời mời kết bạn!");
-                console.log("Đã chấp nhận lời mời kết bạn" + requestId) ;
-            }
-            
-            if (action === 'decline') {
-                socket.emit('decline_friend_request', {
-                    senderId: senderId, 
-                });
-                console.log("Đã từ chối lời mời kết bạn" + requestId) ;
+                showConfirmDialogToast.success(`Đã kết bạn với ${senderName}!`);
+                console.log("Đã chấp nhận lời mời kết bạn " + requestId);
+            } else {
+                showConfirmDialogToast.success(`Đã từ chối lời mời từ ${senderName}`);
+                console.log("Đã từ chối lời mời kết bạn " + requestId);
             }
             if (refreshData) {
               refreshData(); 
@@ -79,9 +107,28 @@ const FriendRequestList = ({ socket, myInfo, onShowSelectProfile, refreshData })
             setRequests(prev => prev.filter(r => r._id !== requestId));
         }
     } catch (err) { 
-        console.error("Lỗi xử lý lời mời:", err); 
+        console.error("Lỗi xử lý lời mời:", err);
+        showConfirmDialogToast.error("Không thể thực hiện thao tác này");
     }
   };
+
+  const handleAction = async (requestId, senderId, senderName, action) => {
+    if (action === 'accept') {
+      showConfirmDialogToast.confirmGeneral(
+        `Chấp nhận lời mời kết bạn từ ${senderName}?`,
+        "Chấp nhận",
+        "bg-blue-600",
+        () => executeAction(requestId, senderId, senderName, 'accept')
+      );
+    } else {
+      showConfirmDialogToast.confirmGeneral(
+        `Từ chối lời mời từ ${senderName}?`,
+        "Từ chối",
+        "bg-red-600",
+        () => executeAction(requestId, senderId, senderName, 'decline')
+      );
+    }
+  }
 
   if (loading) {
     return (
@@ -124,12 +171,11 @@ const FriendRequestList = ({ socket, myInfo, onShowSelectProfile, refreshData })
                     </div>
                 </div>
             
-            {/* Nút Action - Thêm stopPropagation để khi bấm nút không bị nhảy Modal Profile */}
             <div className="flex gap-2 ml-4 " onClick={(e) => e.stopPropagation()}>
-                <button onClick={() => handleAction(req._id, req.sender?._id, 'accept')} className="cursor-pointer ...">
+                <button onClick={() => handleAction(req._id, req.sender?._id, req.sender?.username, 'accept')} className="cursor-pointer ...">
                 <Check size={18} />
                 </button>
-                <button onClick={() => handleAction(req._id, req.sender?._id, 'decline')} className="cursor-pointer ...">
+                <button onClick={() => handleAction(req._id, req.sender?._id, req.sender?.username, 'decline')} className="cursor-pointer ...">
                 <X size={18} />
                 </button>
             </div>
@@ -143,7 +189,7 @@ const FriendRequestList = ({ socket, myInfo, onShowSelectProfile, refreshData })
           </div>
           <h3 className="text-gray-800 font-bold text-lg">Bạn không có lời mời nào</h3>
           <p className="text-gray-400 text-sm mt-2 max-w-xs">
-            Lời mời kết bạn từ người khác sẽ xuất hiện ở đây để bạn phê duyệt.
+            Lời mời kết bạn từ người khác sẽ xuất hiện ở đây.
           </p>
         </div>
       )}

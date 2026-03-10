@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import axios from 'axios';
-import { Camera, X, Pencil, Phone, MessageSquare } from 'lucide-react';
+import { Camera, X, Pencil, Phone, MessageSquare , UserPlus } from 'lucide-react';
 import { formatToVNPhone } from '../../../utils/phoneFormatUser';
+import { showConfirmDialogToast } from '../../../utils/toastHelpers';
 import { 
   days, months, years, 
   selectDateStyles, 
@@ -10,11 +11,11 @@ import {
   formatBirthDateToString 
 } from '../../../utils/birthDateForm';
 
-const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) => {
+const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess ,onSendFriendRequest}) => {
   const isMe = !targetUser || myInfo?._id === targetUser?._id;
   const isCloud = targetUser?.username === "Cloud của tôi";
   const userDisplay = isMe ? myInfo : targetUser;
-
+  
   // States dữ liệu
   const [username, setUsername] = useState('');
   const [gender, setGender] = useState('');
@@ -26,6 +27,12 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
   const [currentPublicId, setCurrentPublicId] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [birthDate, setBirthDate] = useState({ day: '', month: '', year: '' });
+  
+  // Luôn lấy trạng thái mới nhất từ props targetUser (từ backend qua fetchFriends)
+  const isFriend = !isMe && !isCloud && !!targetUser?.isFriend;
+  const isPending = !isMe && !isCloud && !!targetUser?.pendingRequest;
+  const isSent = !isMe && !isCloud && !!targetUser?.sentRequest;
+  const isStranger = !isMe && !isCloud && !isFriend && !targetUser?.isGroup && !isPending && !isSent;
 
   // Hàm Reset dữ liệu
   const resetData = () => {
@@ -52,6 +59,14 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
       resetData();
     }
   }, [isOpen, userDisplay]);
+
+  // Khi targetUser thay đổi trạng thái isFriend, cập nhật lại nút hành động
+  useEffect(() => {
+    if (!isMe && !isCloud && targetUser && typeof targetUser.isFriend === 'boolean') {
+      setIsEditing(false);
+      setImage(null);
+    }
+  }, [targetUser?.isFriend]);
 
   // Giải phóng bộ nhớ cho ảnh preview
   useEffect(() => {
@@ -84,7 +99,7 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
 
   // Hàm cập nhật Profile
   const handleUpdate = async () => {
-    if (!username.trim()) return alert("Tên không được để trống");
+    if (!username.trim()) return showConfirmDialogToast.error("Tên không được để trống");
     setLoading(true);
 
     try {
@@ -122,17 +137,33 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
 
       if (updateRes.status === 200) {
         onUpdateSuccess(updateRes.data);
-        alert("Cập nhật thành công!");
+        showConfirmDialogToast.success("Cập nhật thành công!");
         setIsEditing(false);
         setImage(null);
       }
     } catch (err) {
       console.error("Lỗi:", err);
-      alert("Lỗi cập nhật. Vui lòng thử lại!");
+      showConfirmDialogToast.error("Lỗi cập nhật. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
   };
+
+  // Hàm xử lý gửi lời mời kết bạn
+  const handleAddFriendClick = async () => {
+    if (!targetUser?.phone) {
+      showConfirmDialogToast.error("Người dùng này không có số điện thoại để kết bạn!");
+      return;
+    }
+  
+    const result = await onSendFriendRequest(targetUser.phone);
+    if (result && result.success) {
+      // Lời mời đã gửi - backend sẽ cập nhật qua fetchFriends() ở ChatPage
+      // profileModal sẽ nhận targetUser mới từ props với sentRequest=true
+      onClose();
+    }
+  };
+
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center z-[100] p-4 font-sans text-gray-800">
@@ -261,7 +292,7 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
                   </div>
                 ) : ( 
                   <span className="text-gray-800 font-medium">
-                    {isMe ? formatToVNPhone(phone) : "+84 *********"}
+                    {!isStranger ? formatToVNPhone(phone) : "+84 *********"}
                   </span>
                 )}
               </div>
@@ -286,7 +317,27 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess }) 
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 mt-5">
-              <button className="flex items-center justify-center gap-2 bg-[#f1f2f4] py-2 rounded-md hover:bg-gray-200 text-[14px] font-medium"><Phone size={18} /> Gọi điện</button>
+              {isStranger && (
+                <button 
+                  onClick={() => handleAddFriendClick()}
+                  className="flex items-center justify-center gap-2 bg-[#0068ff] text-white py-2 rounded-md hover:bg-[#005ae0] text-[14px] font-medium"
+                >
+                  <UserPlus size={18} /> Kết bạn
+                </button>
+              )}
+              {isFriend && (
+                <button className="flex items-center justify-center gap-2 bg-[#f1f2f4] py-2 rounded-md hover:bg-gray-200 text-[14px] font-medium"><Phone size={18} /> Gọi điện</button>
+              )}
+              {isPending && (
+                <button disabled className="flex items-center justify-center gap-2 bg-blue-100 text-blue-600 py-2 rounded-md text-[14px] font-medium">
+                  <UserPlus size={18} /> Đã gửi lời mời
+                </button>
+              )}
+              {isSent && (
+                <button disabled className="flex items-center justify-center gap-2 bg-orange-100 text-orange-600 py-2 rounded-md text-[14px] font-medium">
+                  <UserPlus size={18} /> Đã nhận lời mời
+                </button>
+              )}
               <button className="flex items-center justify-center gap-2 bg-[#0068ff] text-white py-2 rounded-md hover:bg-[#005ae0] text-[14px] font-medium"><MessageSquare size={18} /> Nhắn tin</button>
             </div>
           )}
