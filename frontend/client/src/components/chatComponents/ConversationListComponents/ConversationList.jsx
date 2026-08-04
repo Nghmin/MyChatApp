@@ -220,7 +220,8 @@ const ConversationList = ({ friends, onSelectUser, selectedId, onlineUsers = [],
 
               if (senderId === currentMyId) {
                 prefix = "Bạn: ";
-              } else if (isGroup) {
+              } else {
+                // Nhóm hoặc chat riêng từ người khác đều cần hiển thị tên người gửi
                 const senderName = lastMsg.sender?.username || "Người dùng";
                 prefix = `${senderName}: `;
               }

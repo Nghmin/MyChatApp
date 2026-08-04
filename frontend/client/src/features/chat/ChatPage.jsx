@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 // import {FriendRequestToast} from '../../components/toastComponents/FriendRequestToast';
 import {showConfirmDialogToast} from '../../utils/toastHelpers';
 import { showFirendRequestNotification } from '../../utils/toastHelpers';
+import { showCallNotification } from '../../utils/toastHelpers';
+import {toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Sidebar from '../../components/SidebarNav';
 import ConversationList from '../../components/chatComponents/ConversationListComponents/ConversationList';
@@ -13,6 +15,7 @@ import CreateGroupModal from '../../components/chatComponents/ChatModals/CreateG
 import ChatWindow from '../../components/chatComponents/ChatWindowComponents/ChatWindow';
 import ContactItempList from '../../components/contactComponents/ContactItemComponents/ContactItemList'; 
 import ContactWindow from '../../components/contactComponents/ContactWindowComponents/ContactWindow';
+import { useVideoCall } from '../hooks/useVideoCall';
 import { io } from 'socket.io-client';
 const ChatPage = () => {
   const [friends, setFriends] = useState([]);
@@ -34,8 +37,8 @@ const ChatPage = () => {
 
   const socket = useRef(null);
   const selectedUserRef = useRef(null);
-  const processedMessagesRef = useRef(new Set()); // Track processed message IDs to prevent duplicates
-
+  const currentCallToastId = useRef(null);
+  const processedMessagesRef = useRef(new Set());
   const navigate = useNavigate();
 
   const [currentUser, setCurrentUser] = useState(() => {
@@ -50,15 +53,15 @@ const ChatPage = () => {
   const fetchFriends = async () => {
     if (!currentUser) return;
     try {
-      const token = localStorage.getItem('token');
-      console.log("Fetching friends with token:", token);
+      // const token = localStorage.getItem('token');
+      // console.log("Fetching friends with token:", token);
       const myId = currentUser.userId || currentUser._id;
-      const response = await fetch(`http://127.0.0.1:5000/chat/users?currentUserId=${myId}`,{
+      const response = await fetch(`http://localhost:5000/chat/users?currentUserId=${myId}`,{
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        }
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
       if (!response.ok) {
       console.error("Lỗi xác thực hoặc Gateway chặn");
@@ -87,10 +90,10 @@ const ChatPage = () => {
     selectedUserRef.current = selectedUser;
   }, [selectedUser]);
   // Hàm làm mới dữ liệu bạn bè và lời mời kết bạn
-  const refreshFriendData = async () => {
+  const refreshFriendData = useCallback(async () => {
     await fetchFriends();       
     await fetchRequestCounts();  
-  };
+  }, [currentUser]);
 
 
   useEffect(() => {
@@ -112,13 +115,12 @@ const ChatPage = () => {
   // Hàm xử lý chấp nhận nhanh khi nhấn nút trên Toast thông báo
   const handleQuickAccept = async (requestId, senderId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/accept`, {
+      const response = await fetch(`http://localhost:5000/friend/friend/friend/accept`, {
         method: 'PUT',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ requestId })
       });
 
@@ -152,7 +154,7 @@ const ChatPage = () => {
   useEffect(() => {
     if (!myId || socket.current) return;
     
-    socket.current = io('http://127.0.0.1:5000', {
+    socket.current = io('http://localhost:5000', {
       path: '/socket.io',
       transports: ['websocket'],
       reconnection: true,
@@ -168,12 +170,12 @@ const ChatPage = () => {
   const updateFriendsWithLastMessage = (msg) => {
   // Prevent duplicate message processing
   if (processedMessagesRef.current.has(msg._id)) {
-    console.log("⏭️ Bỏ qua tin nhắn trùng:", msg._id);
+    
     return;
   }
   processedMessagesRef.current.add(msg._id);
 
-  console.log("📨 Dữ liệu tin nhắn từ socket:", msg);
+  //console.log("📨 Dữ liệu tin nhắn từ socket:", msg);
   setFriends(prevFriends => {
     const updatedFriends = prevFriends.map(f => {
       const senderId = (msg.sender?._id || msg.sender || "").toString(); 
@@ -382,14 +384,13 @@ const ChatPage = () => {
       console.log("Cập nhật hủy kết bạn", data);
       // Refresh lại toàn bộ danh sách để đồng bộ dữ liệu
       try {
-        const token = localStorage.getItem('token');
         const myID = myId;
-        const response = await fetch(`http://127.0.0.1:5000/chat/users?currentUserId=${myID}`,{
+        const response = await fetch(`http://localhost:5000/chat/users?currentUserId=${myID}`,{
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-          }
+          },
+          credentials: 'include'
         });
         if (response.ok) {
           const newFriendsData = await response.json();
@@ -455,8 +456,57 @@ const ChatPage = () => {
         prev?._id === groupId ? { ...prev, ...updatedGroup } : prev
       );
     };
-    
 
+    // Xử lý cuộc gọi đến
+    const handleIncomingCall = (data) => {
+      console.log(">>> Có cuộc gọi tới từ:", data.name);
+
+      if (currentCallToastId.current) {
+          console.log("⚠️ Đang có một cuộc gọi khác đang chờ, bỏ qua thông báo này.");
+          return;
+      }
+
+      const toastId = showCallNotification.incomingCall(data, 
+          () => {
+              if (toastId) toast.dismiss(toastId);
+              currentCallToastId.current = null; 
+
+              const width = 800;
+              const height = 600;
+              const left = window.screen.width / 2 - width / 2;
+              const top = window.screen.height / 2 - height / 2;
+
+              if (data.signal) {
+                  localStorage.setItem('pendingSignal', JSON.stringify(data.signal));
+              }
+
+              const callUrl = `/video-call?targetId=${data.from}&type=${data.type}&isInitiator=false&displayName=${encodeURIComponent(data.name)}&displayAvatar=${encodeURIComponent(data.avatar || '')}`;
+              
+              setTimeout(() => {
+                  window.open(
+                      callUrl,
+                      'VideoCallWindow',
+                      `width=${width},height=${height},left=${left},top=${top},menubar=no,status=no,toolbar=no`
+                  );
+              }, 100);
+          },
+          
+          () => {
+              if (toastId) toast.dismiss(toastId);
+              currentCallToastId.current = null; 
+
+              
+              s.emit('end_call', { 
+                  to: data.from, 
+                  from: myId, 
+                  reason: 'rejected' 
+              });
+          }
+      );
+
+      // Lưu lại toastId vào ref ngay khi vừa hiện thông báo
+      currentCallToastId.current = toastId;
+  };
     // Đăng ký sự kiện
     s.on('receive_friend_request', handleRequest);
     s.on('friend_request_accepted', handleAccepted);
@@ -494,6 +544,7 @@ const ChatPage = () => {
       console.log("Online users:", users);
       setOnlineUsers(users || []);
     });
+    s.on('incoming_call', handleIncomingCall);
     
     
     return () => {
@@ -517,8 +568,11 @@ const ChatPage = () => {
       s.off('unfriend_action', handleUnfriendUpdated);
       s.off('unfriend_confirmed', handleUnfriendUpdated);
       s.off('user_left_group', handleUserLeftGroup);
+      s.off('incoming_call', handleIncomingCall);
+
     };
   }, [myId, groupForModal, selectedUser?._id , refreshFriendData]);
+  //}, [myId]);
 
   // Vào phòng chat khi chọn người dùng
   useEffect(() => {
@@ -529,27 +583,64 @@ const ChatPage = () => {
     }
   }, [selectedUser?._id, myId]);
      
+  // Hàm xử lý khi bắt đầu cuộc gọi video (có debounce để tránh spam)
+  const lastCallTimeRef = useRef(0);
+  const handleStartCall = (targetId, type, friendName) => {
+    const now = Date.now();
+    // Throttle: chỉ cho phép gọi sau 1 giây
+    if (now - lastCallTimeRef.current < 1000) {
+      console.log("⏱️ Spam protection: vui lòng chờ trước khi gọi lại");
+      return;
+    }
+    lastCallTimeRef.current = now;
+
+    const width = 800;
+    const height = 600;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    // 1. Avatar của đối phương (người mình đang chat cùng)
+    const targetAvatar = selectedUser?.avatar || '';
+
+    // 2. Tạo URL thống nhất:
+    // - displayName: Tên bạn bè (để hiện "Đang gọi cho...")
+    // - displayAvatar: Avatar bạn bè
+    const callUrl = `/video-call?targetId=${targetId}&type=${type}&isInitiator=true&displayName=${encodeURIComponent(friendName)}&displayAvatar=${encodeURIComponent(targetAvatar)}`;
+    
+    window.open(
+        callUrl,
+        'VideoCallPage',
+        `width=${width},height=${height},left=${left},top=${top},menubar=no,status=no,toolbar=no`
+    );
+  };
+
   // Hàm lấy số lượng lời mời kết bạn
   const fetchRequestCounts = async () => {
     if (!myId) return;
     try {
-        const token = localStorage.getItem('token');
-        const headers = { 'Authorization': `Bearer ${token}` };
-        
         // Thêm timeout 10s cho mỗi request
         const fetchWithTimeout = (url, timeout = 10000) => {
-            return Promise.race([
-                fetch(url, { headers }),
-                new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('API timeout')), timeout)
-                )
-            ]);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            return fetch(url, {
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                credentials: 'include'
+            })
+                .finally(() => clearTimeout(timeoutId))
+                .catch(err => {
+                    if (err.name === 'AbortError') {
+                        throw new Error('API timeout');
+                    }
+                    throw err;
+                });
         };
 
         try {
             const [resFriend, resGroup] = await Promise.all([
-                fetchWithTimeout(`http://127.0.0.1:5000/friend/friend/friend/received/${myId}`),
-                fetchWithTimeout(`http://127.0.0.1:5000/friend/friend/group/pending/${myId}`)
+                fetchWithTimeout(`http://localhost:5000/friend/friend/friend/received/${myId}`),
+                fetchWithTimeout(`http://localhost:5000/friend/friend/group/pending/${myId}`)
             ]);
 
             let friendLen = 0;
@@ -614,21 +705,20 @@ const ChatPage = () => {
     selectedUserRef.current = user;
     setFriends(prev => prev.map(f => f._id === user._id ? { ...f, unreadCount: 0 } : f));
     try {
-      const token = localStorage.getItem('token');
       const myRealId = currentUser.userId || currentUser._id;
       
-      let endpoint = 'http://127.0.0.1:5000/chat/messages/mark-as-read';
+      let endpoint = 'http://localhost:5000/chat/messages/mark-as-read';
       let body = { senderId: user._id, receiverId: myRealId };
       if (user.isGroup) {
-        endpoint = 'http://127.0.0.1:5000/chat/messages/mark-group-as-read'; 
+        endpoint = 'http://localhost:5000/chat/messages/mark-group-as-read';
         body = { groupId: user._id, userId: myRealId };
       }
       await fetch(endpoint, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(body)
       });
     } catch (err) {
@@ -665,13 +755,12 @@ const ChatPage = () => {
   // Hàm gửi lời mời kết bạn
   const handleSendFriendRequest = async (targetPhoneOrId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/send`, {
+      const response = await fetch(`http://localhost:5000/friend/friend/friend/send`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
           senderId: myId,
           receiverPhone: targetPhoneOrId
@@ -714,14 +803,13 @@ const ChatPage = () => {
       "bg-red-600",
       async () => {
         try {
-          const token = localStorage.getItem('token');
           const friendId = typeof friend === 'object' ? friend._id : friend;
-          const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/unfriend`, {
+          const response = await fetch(`http://localhost:5000/friend/friend/friend/unfriend`, {
             method: 'POST',
             headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}` 
+              'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({ myId: myId, friendId: friendId })
           });
 
@@ -733,14 +821,13 @@ const ChatPage = () => {
             setIsProfileModalOpen(false);
             
             // Refresh lại toàn bộ danh sách bạn để sync đúng
-            const token = localStorage.getItem('token');
             const myID = myId;
-            const response2 = await fetch(`http://127.0.0.1:5000/chat/users?currentUserId=${myID}`,{
+            const response2 = await fetch(`http://localhost:5000/chat/users?currentUserId=${myID}`,{
               method: 'GET',
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
-              }
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include'
             });
             if (response2.ok) {
               const newFriendsData = await response2.json();
@@ -785,17 +872,16 @@ const ChatPage = () => {
   // Hàm xử lý tạo nhóm
   const handleGroupAction = async (groupData) => {
     try {
-      const token = localStorage.getItem('token');
-      const isInviteMode = !!groupData.groupId; 
+      const isInviteMode = !!groupData.groupId;
 
       if (isInviteMode) {
         
-        const response = await fetch('http://127.0.0.1:5000/friend/friend/group/invite', {
+        const response = await fetch('http://localhost:5000/friend/friend/group/invite', {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify({
             groupId: groupData.groupId,
             inviterId: myId,
@@ -823,9 +909,12 @@ const ChatPage = () => {
         }
       } else {
       
-        const response = await fetch('http://127.0.0.1:5000/friend/friend/group/createGroup', {
+        const response = await fetch('http://localhost:5000/friend/friend/group/createGroup', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          headers: { 
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
           body: JSON.stringify({ ...groupData, adminId: myId })
         });
         
@@ -854,10 +943,12 @@ const ChatPage = () => {
     "bg-red-600",
     async () => {
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`http://127.0.0.1:5000/friend/friend/group/leave-group`, {
+        const response = await fetch(`http://localhost:5000/friend/friend/group/leave-group`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          headers: { 
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
           body: JSON.stringify({ userId: myId, groupId })
         });
 
@@ -880,12 +971,14 @@ const ChatPage = () => {
   );
 };
 
+  console.log("Render ChatPage với selectedUser:", selectedUser);
+
   // Hàm đăng xuất
   const handleLogout = () => {
     if (socket.current) {
       socket.current.disconnect();
     }
-    localStorage.removeItem('token');
+    // localStorage.removeItem('token');
     localStorage.removeItem('user');
 
     setFriends([]);
@@ -944,6 +1037,9 @@ const ChatPage = () => {
             onOpenAddMembersToGroup={openAddMembersToGroup}
             onUnfriend={handleUnfriend}
             onLeaveGroup={handleLeaveGroup}
+            onStartVideoCall={() => handleStartCall(selectedUser._id, 'video', selectedUser.username)}
+            onStartVoiceCall={() => handleStartCall(selectedUser._id, 'voice', selectedUser.username)}
+            onMessageSent={updateFriendsWithLastMessage}
           />
         ) : (
           <ContactWindow
@@ -997,6 +1093,7 @@ const ChatPage = () => {
         initialSelectedUser={initialGroupMember}
         onCreateGroup={handleGroupAction}
       />
+
     </div>
   );
 };

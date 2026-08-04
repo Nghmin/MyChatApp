@@ -49,8 +49,9 @@ const FriendRequestList = ({ socket, myInfo, onShowSelectProfile, refreshData })
       const token = localStorage.getItem('token');
       
       // Gọi sang Friend Service (Cổng 5002)
-      const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/received/${myId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch(`http://localhost:5000/friend/friend/friend/received/${myId}`, {
+        //headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await response.json();
       setRequests(Array.isArray(data) ? data : []);
@@ -73,12 +74,13 @@ const FriendRequestList = ({ socket, myInfo, onShowSelectProfile, refreshData })
         const token = localStorage.getItem('token');
         const endpoint = action === 'accept' ? 'accept' : 'decline';
         const method = action === 'accept' ? 'PUT' : 'DELETE';
-        const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/${endpoint}`, {
+        const response = await fetch(`http://localhost:5000/friend/friend/friend/${endpoint}`, {
             method: method,
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                //'Authorization': `Bearer ${token}`
             },
+            credentials: 'include',
             body: JSON.stringify({ requestId })
         });
 

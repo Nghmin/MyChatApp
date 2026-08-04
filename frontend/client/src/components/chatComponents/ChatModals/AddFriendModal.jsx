@@ -27,10 +27,9 @@ const AddFriendModal = ({ isOpen, onClose, onSendRequest }) => {
     try {
       const storedUser = JSON.parse(localStorage.getItem('user'));
       const myId = storedUser?.userId || storedUser?._id;
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/search?phone=${phone}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+
+      const response = await fetch(`http://localhost:5000/friend/friend/friend/search?phone=${phone}`, {
+        credentials: 'include'
       });
 
       if (response.status === 404) {
@@ -56,8 +55,9 @@ const AddFriendModal = ({ isOpen, onClose, onSendRequest }) => {
           return;
         }
 
-        const pendingRes = await fetch(`http://127.0.0.1:5000/friend/friend/friend/sent/${myId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const pendingRes = await fetch(`http://localhost:5000/friend/friend/friend/sent/${myId}`, {
+          // headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include'
         });
         const pendingData = await pendingRes.json();
         

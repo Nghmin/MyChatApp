@@ -2,6 +2,8 @@ import React from 'react';
 import { toast } from 'react-toastify';
 import FirendRequestNotification from '../components/toastComponents/FirendRequestNotification';
 import ConfirmDialogToast from '../components/toastComponents/ConfirmDialogToast';
+import IncomingCallToast from '../components/toastComponents/IncomingCallToast'; 
+
 const defaultOptions = {
   position: "bottom-right",
   autoClose: 8000,
@@ -9,12 +11,39 @@ const defaultOptions = {
   style: { 
     borderRadius: '12px', 
     padding: '12px',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+    background: 'transparent', // Để nó hiển thị trọn vẹn custom UI của mình
+    border: 'none'
   }
 };
 
+// Thông báo cuộc gọi đến
+export const showCallNotification = {
+  incomingCall: (data, onAccept, onReject) => {
+    return toast(
+      <IncomingCallToast 
+        callData={data} 
+        onAccept={() => {
+          onAccept();
+        }} 
+        onReject={() => {
+          onReject();
+        }} 
+      />,
+      { 
+        ...defaultOptions, 
+        autoClose: false, 
+        closeOnClick: false,
+        draggable: false,
+        className: 'call-toast-container' 
+      }
+    );
+  }
+};
+
+// --- Các Dialog xác nhận ---
 export const showConfirmDialogToast = {
-  confirmRecall: (onConfirm , onCancel) => {
+  confirmRecall: (onConfirm, onCancel) => {
     const toastId = toast(
       <ConfirmDialogToast 
         message="Bạn có chắc chắn muốn thu hồi tin nhắn này không?" 
@@ -59,36 +88,31 @@ export const showConfirmDialogToast = {
   success: (message) => {
     toast.success(message, { ...defaultOptions, autoClose: 2000 });
   },
-
   error: (message) => {
     toast.error(message, { ...defaultOptions, autoClose: 3000 });
   }
 };
+
+// --- Thông báo lời mời kết bạn & Tin nhắn ---
 export const showFirendRequestNotification = {
   friendRequest: (data, onAccept) => {
     const toastId = toast(
       <FirendRequestNotification data={data} onAccept={onAccept} toastId={null} />,
-      { ...defaultOptions, icon: false , onOpen: (props) => {} }
+      { ...defaultOptions, icon: false, onOpen: (props) => {} }
     );
     toast.update(toastId, {
-    render: <FirendRequestNotification data={data} onAccept={onAccept} toastId={toastId} />
-  });
+      render: <FirendRequestNotification data={data} onAccept={onAccept} toastId={toastId} />
+    });
   },
-
-  // Tin nhắn mới (Ví dụ)
   newMessage: (data, onClick) => {
     toast.info(`Tin nhắn mới từ ${data.senderName}: ${data.text}`, {
        ...defaultOptions,
        onClick: onClick
     });
   },
-
-  //  Thành công (dùng mặc định của thư viện)
   success: (message) => {
     toast.success(message, { ...defaultOptions, autoClose: 3000 });
   },
-
-  // Lỗi
   error: (message) => {
     toast.error(message, { ...defaultOptions, autoClose: 4000 });
   }

@@ -1,12 +1,10 @@
 import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import uploadRoute from './routes/uploadRoute.js';
 dotenv.config();
 
 const app = express();
 // Middleware 
-app.use(cors());
 app.use('/', uploadRoute);
 
 app.use(express.json());

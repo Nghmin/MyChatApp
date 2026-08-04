@@ -39,21 +39,23 @@ const GroupInfoModal = ({ isOpen, onClose, groupData, currentUserId, onOpenCreat
       formData.append('file', file);
 
       // Upload ảnh
-      const uploadRes = await axios.post('http://127.0.0.1:5000/upload/upload', formData, {
+      const uploadRes = await axios.post('http://localhost:5000/upload/upload', formData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          // 'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
-        }
+        },
+        withCredentials: true
       });
 
       if (uploadRes.data?.url && uploadRes.data?.publicId) {
         // Cập nhật avatar nhóm
-        const updateRes = await axios.put('http://127.0.0.1:5000/friend/friend/group/update-avatar', {
+        const updateRes = await axios.put('http://localhost:5000/friend/friend/group/update-avatar', {
           groupId: groupData._id,
           avatar: uploadRes.data.url,
           avatarPublicId: uploadRes.data.publicId
         }, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          //headers: { 'Authorization': `Bearer ${token}` }
+          withCredentials: true
         });
 
         if (updateRes.status === 200) {

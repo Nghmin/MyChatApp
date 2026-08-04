@@ -1,7 +1,7 @@
 import React , { useEffect } from 'react';
 import { Search, Phone, Video, PanelRight } from 'lucide-react';
 import { TimeLastSeen } from '../../../utils/TimeLastSeen';
-const ChatHeader = ({ selectedUser, onShowSelectProfile,onlineUsers = [] ,onToggleSidebar}) => {
+const ChatHeader = ({ selectedUser, onShowSelectProfile,onlineUsers = [] ,onToggleSidebar , onStartVideoCall , onStartVoiceCall}) => {
   if (!selectedUser) return null;
   const isOnline = onlineUsers.includes(selectedUser._id);
   console.log("Selected User:", selectedUser, "Online Users:", onlineUsers, "Is Online?", isOnline);
@@ -58,8 +58,8 @@ const ChatHeader = ({ selectedUser, onShowSelectProfile,onlineUsers = [] ,onTogg
         <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><Search size={20} /></button>
         {!isStranger && (
           <>
-            <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><Phone size={20} /></button>
-            <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><Video size={20} /></button>
+            <button onClick={onStartVoiceCall} className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><Phone size={20} /></button>
+            <button onClick={onStartVideoCall} className="p-2 text-gray-500 hover:bg-gray-100 rounded-md"><Video size={20} /></button>
           </>
         )}
         <button 

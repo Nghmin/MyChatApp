@@ -12,8 +12,8 @@ const SentGroupRequestList = ({ socket, myInfo }) => {
       const token = localStorage.getItem('token');
       const userId = user.userId || user._id;
       // Gọi endpoint mới để get sent invitations của ANY user, không chỉ admin
-      const response = await fetch(`http://127.0.0.1:5000/friend/friend/group/sent-by-user/${userId}` , {
-        headers: {'Authorization': `Bearer ${token}`},
+      const response = await fetch(`http://localhost:5000/friend/friend/group/sent-by-user/${userId}` , {
+        credentials: 'include'
       });
       const data = await response.json();
       setSentRequests(data);
@@ -67,10 +67,9 @@ const SentGroupRequestList = ({ socket, myInfo }) => {
 
   const executeCancelInvite = async (groupId, userId, groupName) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://127.0.0.1:5000/friend/friend/group/decline`, {
+      const response = await fetch(`http://localhost:5000/friend/friend/group/decline`, {
         method: 'POST',
-        headers: {'Authorization': `Bearer ${token}`},
+        credentials: 'include',
         body: JSON.stringify({ groupId, userId })
       });
 

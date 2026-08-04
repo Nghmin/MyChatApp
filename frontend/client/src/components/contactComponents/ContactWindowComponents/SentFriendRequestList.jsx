@@ -16,8 +16,9 @@ const SentFriendRequestList = ({ onShowSelectProfile , socket, myInfo}) => {
       const myId = user.userId || user._id;
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://127.0.0.1:5000/friend/friend/friend/sent/${myId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch(`http://localhost:5000/friend/friend/friend/sent/${myId}`, {
+        //headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       });
       const data = await response.json();
       setRequests(Array.isArray(data) ? data : []);
@@ -40,12 +41,13 @@ const SentFriendRequestList = ({ onShowSelectProfile , socket, myInfo}) => {
   const executeCancel = async (requestId, receiverId, receiverName) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://127.0.0.1:5000/friend/friend/decline`, {
+      const response = await fetch(`http://localhost:5000/friend/friend/decline`, {
         method: 'DELETE', 
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          //'Authorization': `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify({ requestId })
       });
 

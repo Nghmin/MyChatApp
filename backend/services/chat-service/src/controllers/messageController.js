@@ -89,8 +89,7 @@ export const createMessage = async (req, res) => {
                 $set: { lastMessage: lastMsgData }
             });
         } else {
-            // Cập nhật lastMessage cho cả 2 user nhưng chỉ cập nhật lastSeen của người gửi
-            // (Receiver chỉ xem tin nhắn khi mở chat, không phải khi nhận socket event)
+            
             await User.findByIdAndUpdate(senderId, {
                 $set: {
                     lastMessage: lastMsgData,
@@ -206,5 +205,44 @@ export const recallMessage = async (req, res) => {
         res.status(200).json(message);
     } catch (error) {
         res.status(500).json({ message: "Lỗi server khi thu hồi tin nhắn" });
+    }
+};
+
+// Lưu lịch sử cuộc gọi dưới dạng tin nhắn đặc biệt
+export const saveCallLog = async (req, res) => {
+    try {
+        const { senderId, receiverId, type, duration, callStatus } = req.body;
+        
+        const content = callStatus === 'missed' ? 'Cuộc gọi nhỡ' : `Cuộc gọi kết thúc (${duration}s)`;
+
+        const newMessage = new Message({
+            sender: senderId,
+            receiver: receiverId,
+            text: content,
+            messageType: type, 
+            callStatus: callStatus,
+            duration: duration,
+            readBy: [senderId]
+        });
+
+        const savedMessage = await newMessage.save();
+        
+        // Cập nhật lastMessage cho cả 2 như logic cũ của ông
+        const lastMsgData = {
+            _id: savedMessage._id,
+            text: content,
+            sender: { _id: senderId }, // Cần populate thêm nếu muốn đầy đủ
+            createdAt: savedMessage.createdAt,
+            messageType: type
+        };
+
+        await User.updateMany(
+            { _id: { $in: [senderId, receiverId] } },
+            { $set: { lastMessage: lastMsgData } }
+        );
+
+        res.status(201).json(savedMessage);
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi lưu lịch sử cuộc gọi" });
     }
 };

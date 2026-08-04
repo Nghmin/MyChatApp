@@ -6,7 +6,7 @@ import ChatSidebarRight from './ChatSidebarRight';
 import MediaViewerLayer from '../ChatModals/MediaViewerLayer';
 import { showConfirmDialogToast } from '../../../utils/toastHelpers';
 
-const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onShowSelectProfile, socket, onlineUsers, onSendFriendRequest, onOpenCreateNewGroup, onOpenAddMembersToGroup , onUnfriend , onLeaveGroup}) => {
+const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onShowSelectProfile, socket, onlineUsers, onSendFriendRequest, onOpenCreateNewGroup, onOpenAddMembersToGroup , onUnfriend , onLeaveGroup , onStartVideoCall , onStartVoiceCall, onMessageSent}) => {
   const [text, setText] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true); 
@@ -35,14 +35,15 @@ const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onSh
       const currentSkip = isLoadMore ? messages.length : 0;
 
       const url = isGroup 
-        ? `http://127.0.0.1:5000/chat/messages/${myId}/${selectedUser._id}?isGroup=true&limit=${limit}&skip=${currentSkip}`
-        : `http://127.0.0.1:5000/chat/messages/${myId}/${selectedUser._id}?limit=${limit}&skip=${currentSkip}`;
+        ? `http://localhost:5000/chat/messages/${myId}/${selectedUser._id}?isGroup=true&limit=${limit}&skip=${currentSkip}`
+        : `http://localhost:5000/chat/messages/${myId}/${selectedUser._id}?limit=${limit}&skip=${currentSkip}`;
 
       const response = await fetch(url, {
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        }
+          //'Authorization': `Bearer ${token}` 
+        },
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -158,12 +159,13 @@ const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onSh
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:5000/chat/messages', {
+      const response = await fetch('http://localhost:5000/chat/messages', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          //'Authorization': `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify({
           sender: myId,
           receiver: isGroup ? null : selectedUser._id, 
@@ -181,6 +183,10 @@ const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onSh
         setMessages((prev) => 
           prev.map(msg => msg._id === optimisticId ? savedMessage : msg)
         );
+        // Cập nhật conversationlist cho người gửi
+        if (onMessageSent) {
+          onMessageSent(savedMessage);
+        }
       }
     } catch (error) {
       setMessages((prev) => 
@@ -211,12 +217,13 @@ const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onSh
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://127.0.0.1:5000/chat/messages', {
+      const response = await fetch('http://localhost:5000/chat/messages', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            //'Authorization': `Bearer ${token}`
           },
+          credentials: 'include',
           body: JSON.stringify({ 
             sender: myId, 
             receiver: isGroup ? null : selectedUser._id, 
@@ -229,6 +236,10 @@ const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onSh
         const savedMessage = await response.json();
         socket?.emit('send_message', savedMessage);
         setMessages((prev) => prev.map(msg => msg._id === optimisticId ? savedMessage : msg));
+        // Cập nhật conversationlist cho người gửi
+        if (onMessageSent) {
+          onMessageSent(savedMessage);
+        }
       }
     } catch (error) {
       setMessages((prev) => prev.map(msg => msg._id === optimisticId ? { ...msg, isSending: false, error: true } : msg));
@@ -243,12 +254,13 @@ const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onSh
     showConfirmDialogToast.confirmRecall(async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://127.0.0.1:5000/chat/messages/recall', {
+        const response = await fetch('http://localhost:5000/chat/messages/recall', {
           method: 'PUT',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            //'Authorization': `Bearer ${token}`
           },
+          credentials: 'include',
           body: JSON.stringify({ messageId, userId: myId }),
         });
 
@@ -274,7 +286,21 @@ const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onSh
     });
   };
 
-  if (!selectedUser) return <div className="flex-1 bg-[#f0f2f5]" />;
+  if (!selectedUser) {
+    return (
+      <div className="flex-1 bg-gradient-to-br from-[#f0f2f5] to-[#e8ecf1] flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center shadow-md">
+            <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-700">Chọn một cuộc hội thoại</h2>
+          <p className="text-gray-500 text-center max-w-xs">Chọn một bạn hoặc nhóm từ danh sách bên trái để bắt đầu trò chuyện</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex overflow-hidden h-full">
@@ -286,6 +312,8 @@ const ChatWindow = ({ selectedUser, myInfo, onToggleSidebar, isSidebarOpen, onSh
           onShowSelectProfile={onShowSelectProfile}
           onlineUsers={onlineUsers}
           onToggleSidebar={onToggleSidebar}
+          onStartVideoCall={onStartVideoCall}
+          onStartVoiceCall={onStartVoiceCall}
         />
 
         <ChatMessageList 

@@ -1,0 +1,67 @@
+
+services:
+  # 1. API Gateway - Cửa ngõ chính
+  api-gateway:
+    build: ./backend/services/api-gateway
+    ports:
+      - "5000:5000"
+    env_file: ./backend/services/api-gateway/.env
+    depends_on:
+      - auth-service
+      - chat-service
+      - upload-service
+      - friend-service
+    networks:
+      - chat-app-network
+
+  # 2. Auth Service
+  auth-service:
+    build: ./backend/services/auth-service
+    env_file: ./backend/services/auth-service/.env
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks:
+      - chat-app-network
+
+  # 3. Chat Service
+  chat-service:
+    build: ./backend/services/chat-service
+    env_file: ./backend/services/chat-service/.env
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks:
+      - chat-app-network
+
+  # 4. Upload Service
+  upload-service:
+    build: ./backend/services/upload-service
+    env_file: ./backend/services/upload-service/.env
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks:
+      - chat-app-network
+
+  # 5. Friend Service
+  friend-service:
+    build: ./backend/services/friend-service
+    env_file: ./backend/services/friend-service/.env
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks:
+      - chat-app-network
+
+  # 6. Frontend Client
+  frontend:
+    build: ./frontend/client
+    ports:
+      - "5173:5173"
+    networks:
+      - chat-app-network
+
+networks:
+  chat-app-network:
+    driver: bridge

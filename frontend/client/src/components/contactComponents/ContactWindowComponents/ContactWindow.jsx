@@ -41,12 +41,12 @@ const ContactWindow = ({ onSelectCategory, friends = [] ,socket, myInfo , onShow
       const endpoint = action === 'accept' ? 'accept' : 'decline';
       const token = localStorage.getItem('token');
 
-      const response = await fetch(`http://127.0.0.1:5000/friend/friend/group/${endpoint}`, {
+      const response = await fetch(`http://localhost:5000/friend/friend/group/${endpoint}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ groupId, userId: myInfo.userId || myInfo._id })
       });
 

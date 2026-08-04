@@ -9,8 +9,9 @@ const GroupRequestList = ({ refreshTrigger, myId, onAction, socket , onShowSelec
     const fetchInvites = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://127.0.0.1:5000/friend/friend/group/pending/${myId}`, {
-            headers: {'Authorization': `Bearer ${token}`}
+        const response = await fetch(`http://localhost:5000/friend/friend/group/pending/${myId}`, {
+            //headers: {'Authorization': `Bearer ${token}`}
+            credentials: 'include'
         });
         const data = await response.json();
         setGroups(data);

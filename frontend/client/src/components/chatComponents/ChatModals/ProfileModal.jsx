@@ -110,11 +110,12 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess ,on
       if (image) {
         const formData = new FormData();
         formData.append('file', image);
-        const uploadRes = await axios.post('http://127.0.0.1:5000/upload/upload', formData, {
+        const uploadRes = await axios.post('http://localhost:5000/upload/upload', formData, {
           headers: { 
-            'Authorization': `Bearer ${token}`,
+            //'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data' 
-          }
+          },
+          withCredentials: true
         });
         if (uploadRes.data && uploadRes.data.url) {
           finalAvatarUrl = uploadRes.data.url;
@@ -131,8 +132,9 @@ const ProfileModal = ({ isOpen, onClose, myInfo, targetUser, onUpdateSuccess ,on
         avatarPublicId: finalPublicId
       };
 
-      const updateRes = await axios.put('http://127.0.0.1:5000/auth/update-profile', payload, {
-        headers: { 'Authorization': `Bearer ${token}` } 
+      const updateRes = await axios.put('http://localhost:5000/auth/update-profile', payload, {
+        //headers: { 'Authorization': `Bearer ${token}` } 
+        withCredentials: true
       });
 
       if (updateRes.status === 200) {

@@ -1,7 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import cors from 'cors';
 import authRoutes from './routes/authRoute.js';
 import connectDB from './config/mongoDB.js';
 
@@ -11,7 +10,7 @@ const app = express();
 connectDB();
 // Middleware
 app.use(express.json());
-app.use(cors());
+
 app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/', authRoutes);

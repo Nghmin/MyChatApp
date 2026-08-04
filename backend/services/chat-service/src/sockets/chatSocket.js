@@ -79,6 +79,57 @@ export const initSocket = (io) => {
             });
         });
 
+        // Sự kiện đăng ký socket cho cuộc gọi video/voice
+        socket.on('register_call_socket', (userId) => {
+            if (userId) {
+                const callRoom = `call_room_${userId}`;
+                socket.join(callRoom); 
+                console.log(`Cửa sổ gọi của ${userId} đã join ${callRoom}`);
+            }
+        });
+
+        // Sự kiện gọi điện/video
+        socket.on('call_user', (data) => {
+            console.log(`[VideoCall] ${data.from} đang gọi tới ${data.userToCall}`);
+
+            // Dữ liệu cần gửi đi
+            const callPayload = {
+                signal: data.signalData, 
+                from: data.from, 
+                name: data.name,
+                displayName: data.displayName || data.name,
+                type: data.type,
+                avatar: data.avatar
+            };
+            io.to(`call_room_${data.userToCall}`).emit('incoming_call', callPayload);
+        });
+
+        // Sự kiện trả lời tín hiệu 
+        socket.on('answer_call', (data) => {
+            socket.to(`call_room_${data.to}`).emit('call_accepted', data.signal);
+        });    
+
+        // Sự kiện kết thúc/Từ chối cuộc gọi
+        socket.on('end_call', ({ to, reason }) => {
+            io.to(`call_room_${to}`).emit('call_ended', { reason });
+        }); 
+
+        // Sự kiện phát tín hiệu ICE Candidate 
+        socket.on('ice_candidate', (data) => {
+            io.to(`call_room_${data.to}`).emit('ice_candidate', data.candidate);
+        });
+
+        // Sự kiện toggle video/audio
+        socket.on('toggle_video', ({ to, from ,muted }) => {
+            io.to(`call_room_${to}`).emit('remote_video_toggled', { from, muted });
+            console.log("targetId:", to, "myId:", from, "muted:", muted);
+        });
+
+        socket.on('toggle_audio', ({ to, from, muted }) => {
+            io.to(`call_room_${to}`).emit('remote_audio_toggled', { from, muted });
+            console.log("targetId:", to, "myId:", from, "muted:", muted);
+        });
+
         socket.on('disconnect', async () => {
             let disconnectedUserId = null;
             for (let [userId, socketId] of onlineUsers.entries()) {

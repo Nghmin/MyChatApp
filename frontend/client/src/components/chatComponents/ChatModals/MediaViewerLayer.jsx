@@ -4,7 +4,6 @@ import { X, Download, Video } from 'lucide-react';
 const MediaViewerLayer = ({ media, mediaList = [], onClose, onSelectMedia }) => {
   if (!media) return null;
 
-  // Sửa lỗi hiển thị: Nhóm ảnh và log kiểm tra dữ liệu
   const groupedMedia = useMemo(() => {
     if (!mediaList || mediaList.length === 0) return {};
     
@@ -12,8 +11,8 @@ const MediaViewerLayer = ({ media, mediaList = [], onClose, onSelectMedia }) => 
     // Sắp xếp để ảnh mới nhất ở trên
     const sorted = [...mediaList].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+    // Nhóm media theo ngày tháng tạo, format theo locale Việt Nam
     sorted.forEach(m => {
-      // Dùng format đơn giản để làm Key nhóm
       const date = new Date(m.createdAt).toLocaleDateString('vi-VN');
       if (!groups[date]) groups[date] = [];
       groups[date].push(m);
@@ -23,10 +22,9 @@ const MediaViewerLayer = ({ media, mediaList = [], onClose, onSelectMedia }) => 
 
   return (
     <div className="fixed inset-0 z-[1000] bg-black/95 flex animate-in fade-in duration-300">
-      
-      {/* VÙNG CHÍNH: HIỂN THỊ ẢNH/VIDEO */}
+      {/* Vùng rìa trái */}
       <div className="flex-1 relative flex items-center justify-center p-10">
-        {/* Thông tin ngày tháng lơ lửng góc trái */}
+        {/* Thông tin ngày tháng góc trái */}
         <div className="absolute top-6 left-6 z-[1010] bg-black/20 p-3 rounded-lg backdrop-blur-sm">
             <h3 className="text-white font-bold text-lg leading-none mb-1">
                 {media.messageType === 'image' ? 'Hình ảnh' : 'Video'}
@@ -47,7 +45,7 @@ const MediaViewerLayer = ({ media, mediaList = [], onClose, onSelectMedia }) => 
         )}
       </div>
 
-      {/* VÙNG RÌA PHẢI: NÚT ĐIỀU KHIỂN & TIMELINE MEDIA */}
+      {/* Vùng rìa phái */}
       <div className="w-28 bg-[#111] border-l border-white/10 flex flex-col shrink-0">
         
         {/* Hàng nút trên cùng: Download và Close ngang hàng */}
@@ -104,7 +102,7 @@ const MediaViewerLayer = ({ media, mediaList = [], onClose, onSelectMedia }) => 
               </div>
             ))
           ) : (
-            /* Trạng thái rỗng: Vẫn chiếm chiều dài và hiện text báo */
+            
             <div className="h-full flex flex-col items-center justify-center opacity-20">
               <div className="w-1 h-20 bg-gradient-to-b from-transparent via-white to-transparent mb-4" />
               <p className="text-[10px] text-white rotate-90 whitespace-nowrap uppercase tracking-[0.3em]">

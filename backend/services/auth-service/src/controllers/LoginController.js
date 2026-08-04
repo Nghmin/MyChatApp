@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
+
 export const postLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -11,15 +12,21 @@ export const postLogin = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Sai mật khẩu!" });
 
-        const token = jwt.sign(
-            { userId: user._id }, 
-            process.env.JWT_SECRET, 
-            { expiresIn: '1d' }
-        );
-        console.log(token);
+         const token = jwt.sign(
+             { userId: user._id },
+             process.env.JWT_SECRET,
+             { expiresIn: '1d' }
+         );
+         //console.log(token);
+        res.cookie('token', token, {
+            httpOnly: true,    
+            secure: false,      
+            sameSite: 'lax',    
+            maxAge: 7 * 24 * 60 * 60 * 1000 // Thời hạn cookie 
+        });
 
         res.status(200).json({ 
-            token,
+            // token,
             userId: user._id, 
             username: user.username,
             avatar: user.avatar || '',

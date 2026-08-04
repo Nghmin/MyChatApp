@@ -1,7 +1,6 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import chatRoute from './routes/chatRoute.js';
 import userRoute from './routes/userRoute.js';
@@ -10,14 +9,15 @@ import connectDB from './config/mongoDB.js';
 dotenv.config();
 const app = express();
 const httpServer = createServer(app);
-app.use(cors());
+// CORS is handled by API Gateway
 app.use(express.json());
 
 // Cấu hình Socket.io
 const io = new Server(httpServer, {
     cors: { 
-        origin: "*",
-        methods: ["GET", "POST"]
+        origin: "http://localhost:5000",
+        methods: ["GET", "POST"],
+        credentials: true
     },
     allowEIO3: true,
     perMessageDeflate: false,

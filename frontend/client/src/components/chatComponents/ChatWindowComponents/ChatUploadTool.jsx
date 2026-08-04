@@ -20,13 +20,11 @@ const ChatUploadTool = ({ onUploadSuccess }) => {
     formData.append('file', file);
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post('http://127.0.0.1:5000/upload/upload', formData, {
+      const response = await axios.post('http://localhost:5000/upload/upload', formData, {
         headers: { 
-          'Content-Type': 'multipart/form-data' ,
-          'Authorization': `Bearer ${token}` 
+          'Content-Type': 'multipart/form-data'
         },
-        
+        withCredentials: true
       });
 
       if (response.data && response.data.url) {

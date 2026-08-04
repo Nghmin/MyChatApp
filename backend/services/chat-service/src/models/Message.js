@@ -5,6 +5,8 @@ const MessageSchema = new mongoose.Schema({
   receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
   groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', required: false },
   readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  callStatus: { type: String, enum: ['missed', 'completed', 'declined', 'started'], default: null },
+  duration: { type: Number, default: 0 },
   text: String,
   fileUrl: String,
   filePublicId: String,

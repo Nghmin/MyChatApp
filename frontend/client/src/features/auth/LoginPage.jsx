@@ -16,24 +16,27 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const response = await fetch('http://127.0.0.1:5000/auth/login', {
+      // ĐỔI SANG localhost và THÊM credentials
+      const response = await fetch('http://localhost:5000/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
+        credentials: 'include',
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem('token', data.token);
+        // Lưu thông tin user, Token đã nằm an toàn trong Cookie
         localStorage.setItem('user', JSON.stringify(data));
-        showConfirmDialogToast.success("Chào mừng " + data.username + " quay trở lại!");
+        showConfirmDialogToast.success("Chào mừng " + (data.username || "") + " quay trở lại!");
         setTimeout(() => navigate('/chat'), 1000);
       } else {
         showConfirmDialogToast.error(data.message);
       }
     } catch (err) {
       showConfirmDialogToast.error("Lỗi kết nối Server!");
+      console.error("Lỗi đăng nhập:", err);
     } finally {
       setIsLoading(false);
     }
@@ -41,20 +44,20 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex bg-white font-sans">
-      
+
       {/* --- PHẦN BÊN TRÁI: GIỚI THIỆU (Ẩn trên mobile) --- */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 relative items-center justify-center p-12 overflow-hidden">
         {/* Hiệu ứng vòng tròn trang trí background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div 
+          <motion.div
             animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.3, 0.2] }}
             transition={{ duration: 10, repeat: Infinity }}
-            className="absolute -top-20 -left-20 w-[500px] h-[500px] bg-white rounded-full blur-[100px]" 
+            className="absolute -top-20 -left-20 w-[500px] h-[500px] bg-white rounded-full blur-[100px]"
           />
-          <motion.div 
+          <motion.div
             animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.2, 0.1] }}
             transition={{ duration: 15, repeat: Infinity, delay: 2 }}
-            className="absolute -bottom-40 -right-20 w-[600px] h-[600px] bg-blue-400 rounded-full blur-[120px]" 
+            className="absolute -bottom-40 -right-20 w-[600px] h-[600px] bg-blue-400 rounded-full blur-[120px]"
           />
         </div>
 
@@ -67,12 +70,12 @@ const Login = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur-lg rounded-2xl mb-8 border border-white/20">
               <MessageCircle className="w-10 h-10 text-white" />
             </div>
-            
+
             <h1 className="text-5xl font-extrabold mb-6 leading-tight tracking-tight">
               Kết nối <br />
               <span className="text-blue-300">mọi lúc, mọi nơi.</span>
             </h1>
-            
+
             <p className="text-xl text-blue-100/80 mb-12 leading-relaxed">
               Trải nghiệm ứng dụng nhắn tin thế hệ mới với tốc độ vượt trội và bảo mật tối đa.
             </p>
@@ -84,7 +87,7 @@ const Login = () => {
                 { icon: <Zap className="w-6 h-6" />, title: "Tốc độ cực nhanh", desc: "Tin nhắn gửi đi chỉ trong tích tắc." },
                 { icon: <Globe className="w-6 h-6" />, title: "Đa nền tảng", desc: "Sử dụng mượt mà trên mọi thiết bị." }
               ].map((item, index) => (
-                <motion.div 
+                <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
