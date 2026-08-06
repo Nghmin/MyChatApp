@@ -1,16 +1,76 @@
-# React + Vite
+# MyChatApp - Real-time Microservices Chat Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**MyChatApp** là một nền tảng nhắn tin thời gian thực hiện đại, được xây dựng trên kiến trúc Microservices mạnh mẽ. Ứng dụng hỗ trợ nhắn tin tức thời, gọi điện video P2P và quản lý tệp tin, tập trung vào tính bảo mật cao và khả năng mở rộng linh hoạt.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Giao diện ứng dụng
 
-## React Compiler
+### Chat Window
+![Chat Window](./assets/chat-window.png)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Video Call
+![Video Call](./assets/video-call.png)
 
-## Expanding the ESLint configuration
+### Profile & Friends
+![Profile Management](./assets/profile.png)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Tab Contact
+![Tab Contact](./assets/tab-contact.png)
+---
+
+## Tính năng chính
+
+### Xác thực & Bảo mật (Auth & Security)
+- **HttpOnly Cookie JWT**: Cơ chế xác thực an toàn vượt trội, ngăn chặn hoàn toàn các cuộc tấn công XSS.
+- **API Gateway**: Cổng tập trung xử lý điều hướng (routing) và chuẩn hóa chính sách CORS cho toàn bộ hệ thống.
+
+### Thời gian thực (Real-time)
+- **Instant Messaging**: Nhắn tin tức thời với Socket.io.
+- **Presence Status**: Theo dõi trạng thái hoạt động của bạn bè (Online/Offline).
+- **WebRTC Call**: Gọi video/âm thanh trực tiếp (Peer-to-Peer).
+
+### Quản lý phương tiện (Media)
+- **Upload Service**: Dịch vụ chuyên biệt sử dụng Cloudinary và Multer để tối ưu hóa lưu trữ ảnh/video trên đám mây.
+
+### Hệ thống & DevOps
+- **Microservices**: Chia nhỏ hệ thống thành các dịch vụ độc lập (Auth, Chat, Friend, Upload).
+- **Dockerized**: Đóng gói toàn bộ hệ thống bằng Docker, triển khai nhanh chóng với chỉ một câu lệnh.
+
+---
+
+## Công nghệ sử dụng
+
+- **Frontend**: React.js, Tailwind CSS, Framer Motion (Animations), Lucide Icons.
+- **Backend**: Node.js, Express.js, Socket.io, WebRTC.
+- **Database**: MongoDB (Mongoose).
+- **Infrastructure**: API Gateway, Docker & Docker Compose.
+- **Dịch vụ khác**: Cloudinary (Storage), JWT (Authentication).
+
+---
+
+## Cài đặt ứng dụng
+
+### 1. Clone dự án
+```bash
+git clone https://github.com/Nghmin/MyChatApp.git
+cd MyChatApp
+```
+
+### 2. Triển khai bằng Docker 
+Cài đặt Docker và chạy lệnh sau để khởi động toàn bộ hệ thống (Frontend, Backend, Database):
+```bash
+docker-compose up --build
+```
+
+### 3. Chạy thủ công
+*Nếu muốn chạy từng dịch vụ một:*
+- **Backend**: Vào từng folder trong `backend/services/`, chạy `npm install` và `npm start`.
+- **Frontend**: Vào folder `frontend/client/`, chạy `npm install` và `npm run dev`.
+
+---
+
+## Liên hệ
+- **Github**: [https://github.com/Nghmin](https://github.com/Nghmin)
+- **Project Link**: [https://github.com/Nghmin/MyChatApp](https://github.com/Nghmin/MyChatApp)
+
