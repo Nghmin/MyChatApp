@@ -9,7 +9,7 @@ import connectDB from './config/mongoDB.js';
 dotenv.config();
 const app = express();
 const httpServer = createServer(app);
-// CORS is handled by API Gateway
+
 app.use(express.json());
 
 // Cấu hình Socket.io

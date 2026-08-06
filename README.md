@@ -39,6 +39,17 @@
 
 ---
 
+## Tối ưu hiệu năng (Performance Optimization)
+
+Để đảm bảo trải nghiệm mượt mà và tốc độ phản hồi nhanh, dự án đã triển khai các kỹ thuật tối ưu:
+
+- **Message Pagination**: Sử dụng kỹ thuật phân trang (`limit` & `skip`) khi lấy lịch sử tin nhắn, giúp ứng dụng không bị lag ngay cả khi hội thoại có hàng ngàn tin nhắn.
+- **Data Denormalization (Last Message)**: Tin nhắn mới nhất được lưu trực tiếp vào bản ghi của User/Group. Kỹ thuật này giúp trang chủ hiển thị danh sách cuộc trò chuyện ngay lập tức mà không cần phải duyệt qua toàn bộ database tin nhắn, giảm tải đáng kể cho MongoDB.
+- **Selective Population**: Chỉ truy vấn và trả về các trường dữ liệu cần thiết (như `username`, `avatar`) thay vì toàn bộ thông tin người dùng, giúp giảm dung lượng JSON truyền tải và tăng tốc độ xử lý của trình duyệt.
+- **Efficient State Updates**: Sử dụng React Hooks (`useCallback`, `useMemo`) để tránh render lại dư thừa, đảm bảo giao diện mượt mà khi nhận tin nhắn thời gian thực.
+
+---
+
 ## Công nghệ sử dụng
 
 - **Frontend**: React.js, Tailwind CSS, Framer Motion (Animations), Lucide Icons.
